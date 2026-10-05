@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-sym-col">
+  <title id="title-sym-col">AutoTray-Router — Symbol (Full Color)</title>
+  <!-- Far Side Rail Web -->
+  <polygon points="18.01,110.5 165.24,195.5 165.24,171.5 18.01,86.5" fill="#334155"/>
+  <!-- Far Side Rail Top Flange -->
+  <polygon points="18.01,86.5 165.24,171.5 172.17,167.5 24.94,82.5" fill="#0F172A"/>
+
+  <!-- Transverse Welded Ladder Rungs -->
+  <polygon points="109.81,76.5 115.01,79.5 42.26,121.5 37.07,118.5" fill="#334155"/><polygon points="109.81,79.5 109.81,76.5 37.07,118.5 37.07,121.5" fill="#0F172A"/><polygon points="135.79,91.5 140.99,94.5 68.24,136.5 63.05,133.5" fill="#334155"/><polygon points="135.79,94.5 135.79,91.5 63.05,133.5 63.05,136.5" fill="#0F172A"/><polygon points="161.77,106.5 166.97,109.5 94.23,151.5 89.03,148.5" fill="#334155"/><polygon points="161.77,109.5 161.77,106.5 89.03,148.5 89.03,151.5" fill="#0F172A"/><polygon points="187.76,121.5 192.95,124.5 120.21,166.5 115.01,163.5" fill="#334155"/><polygon points="187.76,124.5 187.76,121.5 115.01,163.5 115.01,166.5" fill="#0F172A"/><polygon points="213.74,136.5 218.93,139.5 146.19,181.5 140.99,178.5" fill="#334155"/><polygon points="213.74,139.5 213.74,136.5 140.99,178.5 140.99,181.5" fill="#0F172A"/>
+
+  <!-- Routed Cables laying across ladder rungs -->
+  <polygon points="28.41,96.5 184.29,186.5 196.42,179.5 40.53,89.5" fill="#E65100"/><polygon points="32.65,88.45 188.54,178.45 192.17,176.35 36.29,86.35" fill="#FFA726"/><polygon points="46.59,86.0 202.48,176.0 212.87,170.0 56.99,80.0" fill="#2563EB"/><polygon points="50.23,79.1 206.12,169.1 209.23,167.3 53.35,77.3" fill="#60A5FA"/><polygon points="63.05,76.5 218.93,166.5 227.59,161.5 71.71,71.5" fill="#059669"/><polygon points="66.08,70.75 221.96,160.75 224.56,159.25 68.68,69.25" fill="#34D399"/>
+
+  <!-- Near Side Rail Web -->
+  <polygon points="90.76,68.5 237.99,153.5 237.99,129.5 90.76,44.5" fill="#0F172A"/>
+  <!-- Near Side Rail Top Flange -->
+  <polygon points="90.76,44.5 237.99,129.5 231.06,133.5 83.83,48.5" fill="#64748B"/>
+  <!-- Near Side Rail Bottom Return Flange -->
+  <polygon points="90.76,68.5 237.99,153.5 231.06,157.5 83.83,72.5" fill="#334155"/>
+</svg>

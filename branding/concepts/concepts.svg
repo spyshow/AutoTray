@@ -1,0 +1,496 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1600" height="984" viewBox="0 0 1600 984"><defs><filter id="grey"><feColorMatrix type="saturate" values="0"/></filter></defs><rect width="1600" height="984" fill="#f7f7f4"/><text x="60" y="78" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="40" font-weight="700" fill="#161616">AutoTray-Router — Logo Concepts</text><text x="60" y="116" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="20" fill="#6b6b6b">Concepts for review — pick a direction (or tell me what you like in each).</text><rect x="60" y="150" width="474.667" height="774" rx="18" fill="#fff" stroke="#161616" stroke-width="2"/><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="90" y="190" width="414.667" height="300" preserveAspectRatio="xMidYMid meet">
+  <title id="c0-title-a">AutoTray-Router — Concept A: Riser Vector</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 204 108
+    L 204 148
+    L 220 148
+    L 220 224
+    L 188 224
+    L 188 168
+    L 172 168
+    L 172 120
+    L 128 76
+    L 84 120
+    L 84 168
+    L 68 168
+    L 68 224
+    L 36 224
+    L 36 148
+    L 52 148
+    L 52 108
+    Z
+    M 128 100
+    L 156 128
+    L 156 156
+    L 100 156
+    L 100 128
+    Z
+    M 128 132
+    L 144 148
+    L 112 148
+    Z
+    M 128 174
+    L 156 202
+    L 144 214
+    L 128 198
+    L 112 214
+    L 100 202
+    Z
+  "/>
+</svg></g><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-lockup-a" viewBox="0 0 857 256" x="90" y="514" width="414.667" height="120" preserveAspectRatio="xMidYMid meet">
+  <title id="l0-title-lockup-a">AutoTray-Router — Concept A Lockup</title>
+  <!-- Symbol scaled to 184x184 at (48, 36) -->
+  <g transform="translate(48, 36) scale(0.72)">
+      <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 204 108
+    L 204 148
+    L 220 148
+    L 220 224
+    L 188 224
+    L 188 168
+    L 172 168
+    L 172 120
+    L 128 76
+    L 84 120
+    L 84 168
+    L 68 168
+    L 68 224
+    L 36 224
+    L 36 148
+    L 52 148
+    L 52 108
+    Z
+    M 128 100
+    L 156 128
+    L 156 156
+    L 100 156
+    L 100 128
+    Z
+    M 128 132
+    L 144 148
+    L 112 148
+    Z
+    M 128 174
+    L 156 202
+    L 144 214
+    L 128 198
+    L 112 214
+    L 100 202
+    Z
+  "/>
+  </g>
+  <!-- Wordmark: AUTOTRAY ROUTER -->
+  <path fill="#000000" fill-rule="evenodd" d="M 319.26 72.00 L 358.52 140.00 L 343.57 140.00 L 325.11 114.16 L 313.41 114.16 L 294.95 140.00 L 280.00 140.00 Z M 319.26 96.70 L 310.16 106.00 L 328.36 106.00 Z M 369.52 72.00 H 382.52 V 116.20 A 10.80 10.80 0 0 0 404.12 116.20 V 72.00 H 417.12 V 116.20 A 23.80 23.80 0 0 1 369.52 116.20 Z M 428.12 72.00 H 475.72 V 85.00 H 458.42 V 140.00 H 445.42 V 85.00 H 428.12 Z M 512.56 72.00 A 25.84 34.00 0 1 1 512.55 72.00 Z M 512.56 85.00 A 12.84 21.00 0 1 0 512.57 85.00 Z M 549.40 72.00 H 597.00 V 85.00 H 579.70 V 140.00 H 566.70 V 85.00 H 549.40 Z M 608.00 72.00 H 640.64 A 17.68 17.68 0 0 1 640.64 107.36 H 633.00 L 658.32 140.00 H 641.42 L 621.00 107.36 V 140.00 H 608.00 Z M 621.00 85.00 H 640.64 A 4.68 4.68 0 0 1 640.64 94.36 H 621.00 Z M 708.58 72.00 L 747.84 140.00 L 732.89 140.00 L 714.43 114.16 L 702.73 114.16 L 684.27 140.00 L 669.32 140.00 Z M 708.58 96.70 L 699.48 106.00 L 717.68 106.00 Z M 758.84 72.00 L 777.50 106.00 V 140.00 H 790.50 V 106.00 L 809.16 72.00 H 793.56 L 784.00 100.80 L 774.44 72.00 Z M 282.00 154.00 H 297.36 A 8.32 8.32 0 0 1 297.36 170.64 H 300.50 L 305.68 186.00 H 297.23 L 288.50 170.64 V 186.00 H 282.00 Z M 288.50 160.50 H 297.36 A 1.82 1.82 0 0 1 297.36 164.14 H 288.50 Z M 333.84 154.00 A 12.16 16.00 0 1 1 333.83 154.00 Z M 333.84 160.50 A 5.66 9.50 0 1 0 333.85 160.50 Z M 362.00 154.00 H 368.50 V 174.80 A 4.70 4.70 0 0 0 377.90 174.80 V 154.00 H 384.40 V 174.80 A 11.20 11.20 0 0 1 362.00 174.80 Z M 400.40 154.00 H 422.80 V 160.50 H 414.85 V 186.00 H 408.35 V 160.50 H 400.40 Z M 438.80 154.00 H 459.60 V 160.50 H 445.30 V 166.75 H 453.10 V 173.25 H 445.30 V 179.50 H 459.60 V 186.00 H 438.80 Z M 475.60 154.00 H 490.96 A 8.32 8.32 0 0 1 490.96 170.64 H 494.10 L 499.28 186.00 H 490.83 L 482.10 170.64 V 186.00 H 475.60 Z M 482.10 160.50 H 490.96 A 1.82 1.82 0 0 1 490.96 164.14 H 482.10 Z"/>
+</svg></g><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="90" y="660" width="64" height="64" preserveAspectRatio="xMidYMid meet">
+  <title id="s064-title-a">AutoTray-Router — Concept A: Riser Vector</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 204 108
+    L 204 148
+    L 220 148
+    L 220 224
+    L 188 224
+    L 188 168
+    L 172 168
+    L 172 120
+    L 128 76
+    L 84 120
+    L 84 168
+    L 68 168
+    L 68 224
+    L 36 224
+    L 36 148
+    L 52 148
+    L 52 108
+    Z
+    M 128 100
+    L 156 128
+    L 156 156
+    L 100 156
+    L 100 128
+    Z
+    M 128 132
+    L 144 148
+    L 112 148
+    Z
+    M 128 174
+    L 156 202
+    L 144 214
+    L 128 198
+    L 112 214
+    L 100 202
+    Z
+  "/>
+</svg></g><text x="122" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">64px</text><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="180" y="692" width="32" height="32" preserveAspectRatio="xMidYMid meet">
+  <title id="s032-title-a">AutoTray-Router — Concept A: Riser Vector</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 204 108
+    L 204 148
+    L 220 148
+    L 220 224
+    L 188 224
+    L 188 168
+    L 172 168
+    L 172 120
+    L 128 76
+    L 84 120
+    L 84 168
+    L 68 168
+    L 68 224
+    L 36 224
+    L 36 148
+    L 52 148
+    L 52 108
+    Z
+    M 128 100
+    L 156 128
+    L 156 156
+    L 100 156
+    L 100 128
+    Z
+    M 128 132
+    L 144 148
+    L 112 148
+    Z
+    M 128 174
+    L 156 202
+    L 144 214
+    L 128 198
+    L 112 214
+    L 100 202
+    Z
+  "/>
+</svg></g><text x="196" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">32px</text><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="238" y="708" width="16" height="16" preserveAspectRatio="xMidYMid meet">
+  <title id="s016-title-a">AutoTray-Router — Concept A: Riser Vector</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 204 108
+    L 204 148
+    L 220 148
+    L 220 224
+    L 188 224
+    L 188 168
+    L 172 168
+    L 172 120
+    L 128 76
+    L 84 120
+    L 84 168
+    L 68 168
+    L 68 224
+    L 36 224
+    L 36 148
+    L 52 148
+    L 52 108
+    Z
+    M 128 100
+    L 156 128
+    L 156 156
+    L 100 156
+    L 100 128
+    Z
+    M 128 132
+    L 144 148
+    L 112 148
+    Z
+    M 128 174
+    L 156 202
+    L 144 214
+    L 128 198
+    L 112 214
+    L 100 202
+    Z
+  "/>
+</svg></g><text x="246" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">16px</text><text x="90.0" y="780" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#161616">A · Riser Vector</text><text x="90.0" y="808" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#161616" letter-spacing="1.5">RECOMMENDED</text><text x="90.0" y="842" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">Multi-tier elevation riser forming an &#x27;A&#x27;</text><text x="90.0" y="868" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">chevron with an upward Dijkstra routing</text><text x="90.0" y="894" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">vector.</text><rect x="562.667" y="150" width="474.667" height="774" rx="18" fill="#fff" stroke="#e4e4e0" stroke-width="1"/><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="592.667" y="190" width="414.667" height="300" preserveAspectRatio="xMidYMid meet">
+  <title id="c1-title-b">AutoTray-Router — Concept B: Ladder Monogram</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 216 224
+    L 178 224
+    L 161 186
+    L 95 186
+    L 78 224
+    L 40 224
+    Z
+    M 128 72
+    L 146 112
+    L 110 112
+    Z
+    M 104 126
+    H 152
+    V 142
+    H 104
+    Z
+    M 97 156
+    H 159
+    V 172
+    H 97
+    Z
+  "/>
+</svg></g><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-lockup-b" viewBox="0 0 857 256" x="592.667" y="514" width="414.667" height="120" preserveAspectRatio="xMidYMid meet">
+  <title id="l1-title-lockup-b">AutoTray-Router — Concept B Lockup</title>
+  <!-- Symbol scaled to 184x184 at (48, 36) -->
+  <g transform="translate(48, 36) scale(0.72)">
+      <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 216 224
+    L 178 224
+    L 161 186
+    L 95 186
+    L 78 224
+    L 40 224
+    Z
+    M 128 72
+    L 146 112
+    L 110 112
+    Z
+    M 104 126
+    H 152
+    V 142
+    H 104
+    Z
+    M 97 156
+    H 159
+    V 172
+    H 97
+    Z
+  "/>
+  </g>
+  <!-- Wordmark: AUTOTRAY ROUTER -->
+  <path fill="#000000" fill-rule="evenodd" d="M 319.26 72.00 L 358.52 140.00 L 343.57 140.00 L 325.11 114.16 L 313.41 114.16 L 294.95 140.00 L 280.00 140.00 Z M 319.26 96.70 L 310.16 106.00 L 328.36 106.00 Z M 369.52 72.00 H 382.52 V 116.20 A 10.80 10.80 0 0 0 404.12 116.20 V 72.00 H 417.12 V 116.20 A 23.80 23.80 0 0 1 369.52 116.20 Z M 428.12 72.00 H 475.72 V 85.00 H 458.42 V 140.00 H 445.42 V 85.00 H 428.12 Z M 512.56 72.00 A 25.84 34.00 0 1 1 512.55 72.00 Z M 512.56 85.00 A 12.84 21.00 0 1 0 512.57 85.00 Z M 549.40 72.00 H 597.00 V 85.00 H 579.70 V 140.00 H 566.70 V 85.00 H 549.40 Z M 608.00 72.00 H 640.64 A 17.68 17.68 0 0 1 640.64 107.36 H 633.00 L 658.32 140.00 H 641.42 L 621.00 107.36 V 140.00 H 608.00 Z M 621.00 85.00 H 640.64 A 4.68 4.68 0 0 1 640.64 94.36 H 621.00 Z M 708.58 72.00 L 747.84 140.00 L 732.89 140.00 L 714.43 114.16 L 702.73 114.16 L 684.27 140.00 L 669.32 140.00 Z M 708.58 96.70 L 699.48 106.00 L 717.68 106.00 Z M 758.84 72.00 L 777.50 106.00 V 140.00 H 790.50 V 106.00 L 809.16 72.00 H 793.56 L 784.00 100.80 L 774.44 72.00 Z M 282.00 154.00 H 297.36 A 8.32 8.32 0 0 1 297.36 170.64 H 300.50 L 305.68 186.00 H 297.23 L 288.50 170.64 V 186.00 H 282.00 Z M 288.50 160.50 H 297.36 A 1.82 1.82 0 0 1 297.36 164.14 H 288.50 Z M 333.84 154.00 A 12.16 16.00 0 1 1 333.83 154.00 Z M 333.84 160.50 A 5.66 9.50 0 1 0 333.85 160.50 Z M 362.00 154.00 H 368.50 V 174.80 A 4.70 4.70 0 0 0 377.90 174.80 V 154.00 H 384.40 V 174.80 A 11.20 11.20 0 0 1 362.00 174.80 Z M 400.40 154.00 H 422.80 V 160.50 H 414.85 V 186.00 H 408.35 V 160.50 H 400.40 Z M 438.80 154.00 H 459.60 V 160.50 H 445.30 V 166.75 H 453.10 V 173.25 H 445.30 V 179.50 H 459.60 V 186.00 H 438.80 Z M 475.60 154.00 H 490.96 A 8.32 8.32 0 0 1 490.96 170.64 H 494.10 L 499.28 186.00 H 490.83 L 482.10 170.64 V 186.00 H 475.60 Z M 482.10 160.50 H 490.96 A 1.82 1.82 0 0 1 490.96 164.14 H 482.10 Z"/>
+</svg></g><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="592.667" y="660" width="64" height="64" preserveAspectRatio="xMidYMid meet">
+  <title id="s164-title-b">AutoTray-Router — Concept B: Ladder Monogram</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 216 224
+    L 178 224
+    L 161 186
+    L 95 186
+    L 78 224
+    L 40 224
+    Z
+    M 128 72
+    L 146 112
+    L 110 112
+    Z
+    M 104 126
+    H 152
+    V 142
+    H 104
+    Z
+    M 97 156
+    H 159
+    V 172
+    H 97
+    Z
+  "/>
+</svg></g><text x="624.667" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">64px</text><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="682.667" y="692" width="32" height="32" preserveAspectRatio="xMidYMid meet">
+  <title id="s132-title-b">AutoTray-Router — Concept B: Ladder Monogram</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 216 224
+    L 178 224
+    L 161 186
+    L 95 186
+    L 78 224
+    L 40 224
+    Z
+    M 128 72
+    L 146 112
+    L 110 112
+    Z
+    M 104 126
+    H 152
+    V 142
+    H 104
+    Z
+    M 97 156
+    H 159
+    V 172
+    H 97
+    Z
+  "/>
+</svg></g><text x="698.667" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">32px</text><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="740.667" y="708" width="16" height="16" preserveAspectRatio="xMidYMid meet">
+  <title id="s116-title-b">AutoTray-Router — Concept B: Ladder Monogram</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 128 32
+    L 216 224
+    L 178 224
+    L 161 186
+    L 95 186
+    L 78 224
+    L 40 224
+    Z
+    M 128 72
+    L 146 112
+    L 110 112
+    Z
+    M 104 126
+    H 152
+    V 142
+    H 104
+    Z
+    M 97 156
+    H 159
+    V 172
+    H 97
+    Z
+  "/>
+</svg></g><text x="748.667" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">16px</text><text x="592.6666666666667" y="780" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#161616">B · Ladder Monogram</text><text x="592.6666666666667" y="814" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">Heavy-duty industrial cable ladder tray</text><text x="592.6666666666667" y="840" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">structured into an architectural letterform</text><text x="592.6666666666667" y="866" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">&#x27;A&#x27;.</text><rect x="1065.33" y="150" width="474.667" height="774" rx="18" fill="#fff" stroke="#e4e4e0" stroke-width="1"/><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1095.33" y="190" width="414.667" height="300" preserveAspectRatio="xMidYMid meet">
+  <title id="c2-title-c">AutoTray-Router — Concept C: Segregated Channel</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 36 40
+    H 220
+    V 80
+    H 148
+    V 184
+    H 188
+    V 112
+    H 220
+    V 216
+    H 36
+    V 112
+    H 68
+    V 184
+    H 108
+    V 80
+    H 36
+    Z
+    M 88 148
+    A 20 20 0 1 0 88 147.9
+    Z
+    M 168 136
+    A 11 11 0 1 0 168 135.9
+    Z
+    M 168 168
+    A 11 11 0 1 0 168 167.9
+    Z
+  "/>
+</svg></g><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-lockup-c" viewBox="0 0 857 256" x="1095.33" y="514" width="414.667" height="120" preserveAspectRatio="xMidYMid meet">
+  <title id="l2-title-lockup-c">AutoTray-Router — Concept C Lockup</title>
+  <!-- Symbol scaled to 184x184 at (48, 36) -->
+  <g transform="translate(48, 36) scale(0.72)">
+      <path fill="#000000" fill-rule="evenodd" d="
+    M 36 40
+    H 220
+    V 80
+    H 148
+    V 184
+    H 188
+    V 112
+    H 220
+    V 216
+    H 36
+    V 112
+    H 68
+    V 184
+    H 108
+    V 80
+    H 36
+    Z
+    M 88 148
+    A 20 20 0 1 0 88 147.9
+    Z
+    M 168 136
+    A 11 11 0 1 0 168 135.9
+    Z
+    M 168 168
+    A 11 11 0 1 0 168 167.9
+    Z
+  "/>
+  </g>
+  <!-- Wordmark: AUTOTRAY ROUTER -->
+  <path fill="#000000" fill-rule="evenodd" d="M 319.26 72.00 L 358.52 140.00 L 343.57 140.00 L 325.11 114.16 L 313.41 114.16 L 294.95 140.00 L 280.00 140.00 Z M 319.26 96.70 L 310.16 106.00 L 328.36 106.00 Z M 369.52 72.00 H 382.52 V 116.20 A 10.80 10.80 0 0 0 404.12 116.20 V 72.00 H 417.12 V 116.20 A 23.80 23.80 0 0 1 369.52 116.20 Z M 428.12 72.00 H 475.72 V 85.00 H 458.42 V 140.00 H 445.42 V 85.00 H 428.12 Z M 512.56 72.00 A 25.84 34.00 0 1 1 512.55 72.00 Z M 512.56 85.00 A 12.84 21.00 0 1 0 512.57 85.00 Z M 549.40 72.00 H 597.00 V 85.00 H 579.70 V 140.00 H 566.70 V 85.00 H 549.40 Z M 608.00 72.00 H 640.64 A 17.68 17.68 0 0 1 640.64 107.36 H 633.00 L 658.32 140.00 H 641.42 L 621.00 107.36 V 140.00 H 608.00 Z M 621.00 85.00 H 640.64 A 4.68 4.68 0 0 1 640.64 94.36 H 621.00 Z M 708.58 72.00 L 747.84 140.00 L 732.89 140.00 L 714.43 114.16 L 702.73 114.16 L 684.27 140.00 L 669.32 140.00 Z M 708.58 96.70 L 699.48 106.00 L 717.68 106.00 Z M 758.84 72.00 L 777.50 106.00 V 140.00 H 790.50 V 106.00 L 809.16 72.00 H 793.56 L 784.00 100.80 L 774.44 72.00 Z M 282.00 154.00 H 297.36 A 8.32 8.32 0 0 1 297.36 170.64 H 300.50 L 305.68 186.00 H 297.23 L 288.50 170.64 V 186.00 H 282.00 Z M 288.50 160.50 H 297.36 A 1.82 1.82 0 0 1 297.36 164.14 H 288.50 Z M 333.84 154.00 A 12.16 16.00 0 1 1 333.83 154.00 Z M 333.84 160.50 A 5.66 9.50 0 1 0 333.85 160.50 Z M 362.00 154.00 H 368.50 V 174.80 A 4.70 4.70 0 0 0 377.90 174.80 V 154.00 H 384.40 V 174.80 A 11.20 11.20 0 0 1 362.00 174.80 Z M 400.40 154.00 H 422.80 V 160.50 H 414.85 V 186.00 H 408.35 V 160.50 H 400.40 Z M 438.80 154.00 H 459.60 V 160.50 H 445.30 V 166.75 H 453.10 V 173.25 H 445.30 V 179.50 H 459.60 V 186.00 H 438.80 Z M 475.60 154.00 H 490.96 A 8.32 8.32 0 0 1 490.96 170.64 H 494.10 L 499.28 186.00 H 490.83 L 482.10 170.64 V 186.00 H 475.60 Z M 482.10 160.50 H 490.96 A 1.82 1.82 0 0 1 490.96 164.14 H 482.10 Z"/>
+</svg></g><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1095.33" y="660" width="64" height="64" preserveAspectRatio="xMidYMid meet">
+  <title id="s264-title-c">AutoTray-Router — Concept C: Segregated Channel</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 36 40
+    H 220
+    V 80
+    H 148
+    V 184
+    H 188
+    V 112
+    H 220
+    V 216
+    H 36
+    V 112
+    H 68
+    V 184
+    H 108
+    V 80
+    H 36
+    Z
+    M 88 148
+    A 20 20 0 1 0 88 147.9
+    Z
+    M 168 136
+    A 11 11 0 1 0 168 135.9
+    Z
+    M 168 168
+    A 11 11 0 1 0 168 167.9
+    Z
+  "/>
+</svg></g><text x="1127.33" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">64px</text><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1185.33" y="692" width="32" height="32" preserveAspectRatio="xMidYMid meet">
+  <title id="s232-title-c">AutoTray-Router — Concept C: Segregated Channel</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 36 40
+    H 220
+    V 80
+    H 148
+    V 184
+    H 188
+    V 112
+    H 220
+    V 216
+    H 36
+    V 112
+    H 68
+    V 184
+    H 108
+    V 80
+    H 36
+    Z
+    M 88 148
+    A 20 20 0 1 0 88 147.9
+    Z
+    M 168 136
+    A 11 11 0 1 0 168 135.9
+    Z
+    M 168 168
+    A 11 11 0 1 0 168 167.9
+    Z
+  "/>
+</svg></g><text x="1201.33" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">32px</text><g filter="url(#grey)"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1243.33" y="708" width="16" height="16" preserveAspectRatio="xMidYMid meet">
+  <title id="s216-title-c">AutoTray-Router — Concept C: Segregated Channel</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 36 40
+    H 220
+    V 80
+    H 148
+    V 184
+    H 188
+    V 112
+    H 220
+    V 216
+    H 36
+    V 112
+    H 68
+    V 184
+    H 108
+    V 80
+    H 36
+    Z
+    M 88 148
+    A 20 20 0 1 0 88 147.9
+    Z
+    M 168 136
+    A 11 11 0 1 0 168 135.9
+    Z
+    M 168 168
+    A 11 11 0 1 0 168 167.9
+    Z
+  "/>
+</svg></g><text x="1251.33" y="744" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">16px</text><text x="1095.3333333333335" y="780" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#161616">C · Segregated Channel</text><text x="1095.3333333333335" y="814" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">Engineered tray cross-section with central</text><text x="1095.3333333333335" y="840" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">metallic barrier separating power and</text><text x="1095.3333333333335" y="866" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">control compartments.</text></svg>

@@ -1,0 +1,672 @@
+'use client';
+
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  ColumnDef,
+  flexRender,
+  SortingState,
+} from '@tanstack/react-table';
+import { Branch } from '@/lib/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Plus,
+  Trash2,
+  Search,
+  ArrowUpDown,
+  MoveVertical,
+  MoveHorizontal,
+} from 'lucide-react';
+
+interface EditableCellInputProps {
+  value: string | number;
+  onSave: (val: any) => void;
+  type?: 'text' | 'number';
+  step?: string;
+  min?: string | number;
+  className?: string;
+  placeholder?: string;
+}
+
+/**
+ * Focus-preserving editable cell input for Branches & Risers.
+ * Keeps local state for instantaneous keystrokes without unmounting or losing focus.
+ * Debounces auto-save (400ms) and commits immediately on blur or Enter.
+ */
+function EditableCellInput({
+  value: initialValue,
+  onSave,
+  type = 'text',
+  step,
+  min,
+  className,
+  placeholder,
+}: EditableCellInputProps) {
+  const [val, setVal] = useState<string | number>(initialValue ?? '');
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isTypingRef.current) {
+      setVal(initialValue ?? '');
+    }
+  }, [initialValue]);
+
+  const commitValue = useCallback(
+    (valueToCommit: string | number) => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      isTypingRef.current = false;
+      if (valueToCommit !== initialValue) {
+        if (type === 'number') {
+          const num = parseFloat(String(valueToCommit));
+          if (!isNaN(num)) {
+            onSave(num);
+          }
+        } else {
+          onSave(String(valueToCommit).trim());
+        }
+      }
+    },
+    [initialValue, onSave, type]
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextVal = e.target.value;
+    isTypingRef.current = true;
+    setVal(nextVal);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      commitValue(nextVal);
+    }, 400);
+  };
+
+  const handleBlur = () => {
+    commitValue(val);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      commitValue(val);
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  return (
+    <input
+      type={type}
+      step={step}
+      min={min}
+      value={val}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
+
+interface BranchesTableProps {
+  branches: Branch[];
+  defaultTrayHeight: number;
+  onUpdateBranch: (index: number, updated: Branch) => void;
+  onAddBranch: (branch: Branch) => void;
+  onDeleteBranch: (index: number) => void;
+  onDeleteMultipleBranches?: (indices: number[]) => void;
+  onDeleteAllBranches?: () => void;
+}
+
+export function BranchesTable({
+  branches,
+  defaultTrayHeight,
+  onUpdateBranch,
+  onAddBranch,
+  onDeleteBranch,
+  onDeleteMultipleBranches,
+  onDeleteAllBranches,
+}: BranchesTableProps) {
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [levelFilter, setLevelFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  // Stable references to prevent columns useMemo recreation on every keystroke
+  const branchesRef = useRef(branches);
+  branchesRef.current = branches;
+
+  const onUpdateBranchRef = useRef(onUpdateBranch);
+  onUpdateBranchRef.current = onUpdateBranch;
+
+  const onDeleteBranchRef = useRef(onDeleteBranch);
+  onDeleteBranchRef.current = onDeleteBranch;
+
+  const defaultTrayHeightRef = useRef(defaultTrayHeight);
+  defaultTrayHeightRef.current = defaultTrayHeight;
+
+  // Clean up selected indices when branch count shrinks
+  useEffect(() => {
+    setSelectedIndices(prev => {
+      const next = new Set<number>();
+      prev.forEach(i => {
+        if (i < branches.length) next.add(i);
+      });
+      return next;
+    });
+  }, [branches.length]);
+
+  // Extract unique level names for filter pills
+  const availableLevels = useMemo(() => {
+    const set = new Set<string>();
+    branches.forEach(b => set.add(b.level));
+    return Array.from(set);
+  }, [branches]);
+
+  const filteredBranches = useMemo(() => {
+    return branches.filter(b => {
+      if (levelFilter !== 'ALL' && b.level !== levelFilter) {
+        return false;
+      }
+      if (typeFilter !== 'ALL' && b.branch_type !== typeFilter) {
+        return false;
+      }
+      if (!globalFilter) return true;
+      const q = globalFilter.toLowerCase();
+      return (
+        b.branch_id.toLowerCase().includes(q) ||
+        b.node_from.toLowerCase().includes(q) ||
+        b.node_to.toLowerCase().includes(q) ||
+        b.level.toLowerCase().includes(q)
+      );
+    });
+  }, [branches, levelFilter, typeFilter, globalFilter]);
+
+  const isAllFilteredSelected =
+    filteredBranches.length > 0 &&
+    filteredBranches.every(b => selectedIndices.has(branches.indexOf(b)));
+  const isSomeFilteredSelected =
+    filteredBranches.some(b => selectedIndices.has(branches.indexOf(b))) && !isAllFilteredSelected;
+
+  const handleToggleSelectAll = () => {
+    const next = new Set(selectedIndices);
+    if (isAllFilteredSelected) {
+      filteredBranches.forEach(b => {
+        const idx = branchesRef.current.indexOf(b);
+        if (idx !== -1) next.delete(idx);
+      });
+    } else {
+      filteredBranches.forEach(b => {
+        const idx = branchesRef.current.indexOf(b);
+        if (idx !== -1) next.add(idx);
+      });
+    }
+    setSelectedIndices(next);
+  };
+
+  const handleAddNew = () => {
+    const newIdx = branchesRef.current.length + 1;
+    onAddBranch({
+      branch_id: `BR_L1_${newIdx.toString().padStart(2, '0')}`,
+      node_from: `NODE_${newIdx}`,
+      node_to: `NODE_${newIdx + 1}`,
+      level: 'Level 1',
+      branch_type: 'horizontal',
+      length_m: 6.0,
+      tray_height_mm: defaultTrayHeightRef.current,
+    });
+  };
+
+  const columns = useMemo<ColumnDef<Branch>[]>(
+    () => [
+      {
+        id: 'select',
+        header: () => (
+          <div className="flex items-center justify-center px-1">
+            <input
+              type="checkbox"
+              checked={isAllFilteredSelected}
+              ref={el => {
+                if (el) el.indeterminate = isSomeFilteredSelected;
+              }}
+              onChange={handleToggleSelectAll}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              title="Select all filtered branches"
+            />
+          </div>
+        ),
+        cell: ({ row }) => {
+          const originalIdx = branchesRef.current.indexOf(row.original);
+          const isSelected = selectedIndices.has(originalIdx);
+          return (
+            <div className="flex items-center justify-center px-1">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => {
+                  const next = new Set(selectedIndices);
+                  if (isSelected) {
+                    next.delete(originalIdx);
+                  } else {
+                    next.add(originalIdx);
+                  }
+                  setSelectedIndices(next);
+                }}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'branch_id',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-0 hover:bg-transparent font-bold"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Tray Segment ID
+            <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          return (
+            <EditableCellInput
+              value={row.original.branch_id}
+              onSave={newId => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, { ...row.original, branch_id: newId });
+                }
+              }}
+              className="font-mono text-xs font-semibold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white px-1 py-0.5 rounded outline-none w-32"
+            />
+          );
+        },
+      },
+      {
+        accessorKey: 'node_from',
+        header: 'From Node',
+        cell: ({ row }) => {
+          return (
+            <EditableCellInput
+              value={row.original.node_from}
+              onSave={newFrom => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, { ...row.original, node_from: newFrom });
+                }
+              }}
+              className="text-xs px-1.5 py-0.5 rounded font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 bg-slate-100 text-slate-800 outline-none w-32"
+            />
+          );
+        },
+      },
+      {
+        accessorKey: 'node_to',
+        header: 'To Node',
+        cell: ({ row }) => {
+          return (
+            <EditableCellInput
+              value={row.original.node_to}
+              onSave={newTo => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, { ...row.original, node_to: newTo });
+                }
+              }}
+              className="text-xs px-1.5 py-0.5 rounded font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 bg-slate-100 text-slate-800 outline-none w-32"
+            />
+          );
+        },
+      },
+      {
+        accessorKey: 'level',
+        header: 'Elevation Level',
+        cell: ({ row }) => {
+          return (
+            <EditableCellInput
+              value={row.original.level}
+              onSave={newLevel => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, { ...row.original, level: newLevel });
+                }
+              }}
+              className="text-xs px-1.5 py-0.5 rounded font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 bg-slate-50 text-slate-700 outline-none w-28"
+            />
+          );
+        },
+      },
+      {
+        accessorKey: 'branch_type',
+        header: 'Orientation',
+        cell: ({ row }) => {
+          const isVertical = row.original.branch_type === 'vertical';
+          return (
+            <button
+              onClick={() => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, {
+                    ...row.original,
+                    branch_type: isVertical ? 'horizontal' : 'vertical',
+                  });
+                }
+              }}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold cursor-pointer border transition ${
+                isVertical
+                  ? 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200'
+                  : 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200'
+              }`}
+              title="Click to toggle Horizontal / Vertical Riser"
+            >
+              {isVertical ? (
+                <>
+                  <MoveVertical className="h-3 w-3" /> Vertical Riser
+                </>
+              ) : (
+                <>
+                  <MoveHorizontal className="h-3 w-3" /> Horizontal
+                </>
+              )}
+            </button>
+          );
+        },
+      },
+      {
+        accessorKey: 'length_m',
+        header: 'Length (m)',
+        cell: ({ row }) => {
+          return (
+            <EditableCellInput
+              type="number"
+              step="0.5"
+              min="0.5"
+              value={row.original.length_m}
+              onSave={newLen => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, {
+                    ...row.original,
+                    length_m: parseFloat(String(newLen)) || 1,
+                  });
+                }
+              }}
+              className="font-mono text-xs text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-16 outline-none"
+            />
+          );
+        },
+      },
+      {
+        accessorKey: 'tray_height_mm',
+        header: 'Height (mm)',
+        cell: ({ row }) => {
+          const val = row.original.tray_height_mm ?? defaultTrayHeightRef.current;
+          return (
+            <EditableCellInput
+              type="number"
+              step="5"
+              min="30"
+              value={val}
+              onSave={newH => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, {
+                    ...row.original,
+                    tray_height_mm: parseFloat(String(newH)) || defaultTrayHeightRef.current,
+                  });
+                }
+              }}
+              className="font-mono text-xs text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-16 outline-none"
+            />
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => {
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) onDeleteBranchRef.current(idx);
+              }}
+              className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+              title="Delete Branch"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          );
+        },
+      },
+    ],
+    // Only recompute columns when selection changes (does not recompute on typing!)
+    [selectedIndices, isAllFilteredSelected, isSomeFilteredSelected]
+  );
+
+  const table = useReactTable({
+    data: filteredBranches,
+    columns,
+    getRowId: (row, index) => row.branch_id || `branch_${index}`,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: { pageSize: 12 },
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Top Action Toolbar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Search Box */}
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Search segment ID, node, level..."
+              value={globalFilter}
+              onChange={e => setGlobalFilter(e.target.value)}
+              className="pl-8 text-xs h-9"
+            />
+          </div>
+
+          {/* Level Filter Pills */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            <button
+              onClick={() => setLevelFilter('ALL')}
+              className={`text-xs px-2.5 py-1 rounded-md font-medium transition ${
+                levelFilter === 'ALL'
+                  ? 'bg-white text-indigo-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Levels
+            </button>
+            {availableLevels.map(lvl => (
+              <button
+                key={lvl}
+                onClick={() => setLevelFilter(lvl)}
+                className={`text-xs px-2.5 py-1 rounded-md font-medium transition ${
+                  levelFilter === lvl
+                    ? 'bg-white text-indigo-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {lvl}
+              </button>
+            ))}
+          </div>
+
+          {/* Orientation Filter */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            {['ALL', 'horizontal', 'vertical'].map(type => (
+              <button
+                key={type}
+                onClick={() => setTypeFilter(type)}
+                className={`text-xs px-2.5 py-1 rounded-md font-medium capitalize transition ${
+                  typeFilter === type
+                    ? 'bg-white text-indigo-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {type === 'ALL' ? 'All Types' : type}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          {selectedIndices.size > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (confirm(`Delete ${selectedIndices.size} selected branch(es)?`)) {
+                  if (onDeleteMultipleBranches) {
+                    onDeleteMultipleBranches(Array.from(selectedIndices));
+                  } else {
+                    const sorted = Array.from(selectedIndices).sort((a, b) => b - a);
+                    sorted.forEach(idx => onDeleteBranch(idx));
+                  }
+                  setSelectedIndices(new Set());
+                }
+              }}
+              className="text-xs h-9 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold gap-1.5"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Selected ({selectedIndices.size})
+            </Button>
+          )}
+
+          {branches.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (confirm(`Are you sure you want to delete all ${branches.length} branches and risers from this project?`)) {
+                  if (onDeleteAllBranches) {
+                    onDeleteAllBranches();
+                  } else if (onDeleteMultipleBranches) {
+                    onDeleteMultipleBranches(branches.map((_, i) => i));
+                  }
+                  setSelectedIndices(new Set());
+                }
+              }}
+              className="text-xs h-9 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold gap-1.5"
+              title="Delete all branches and risers in this project"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete All
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            onClick={handleAddNew}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Branch / Riser
+          </Button>
+        </div>
+      </div>
+
+      {/* TanStack Branches Table */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map(headerGroup => (
+              <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100">
+                {headerGroup.headers.map(header => (
+                  <TableHead key={header.id} className="text-xs font-bold text-slate-700 py-3">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map(row => {
+                const originalIdx = branchesRef.current.indexOf(row.original);
+                const isSelected = selectedIndices.has(originalIdx);
+                return (
+                  <TableRow
+                    key={row.id}
+                    className={isSelected ? 'bg-indigo-50/70 hover:bg-indigo-50/90' : undefined}
+                  >
+                    {row.getVisibleCells().map(cell => (
+                      <TableCell key={cell.id} className="text-xs py-2">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
+                  No branch or riser segments match the filter.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        {/* Pagination Bar */}
+        <div className="flex items-center justify-between p-3 border-t border-slate-200 bg-slate-50 text-xs">
+          <div className="text-slate-500">
+            Showing {table.getRowModel().rows.length} of {filteredBranches.length} segments
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="h-8 px-3 text-xs"
+            >
+              Previous
+            </Button>
+            <span className="text-slate-600 font-medium">
+              Page {table.getState().pagination.pageIndex + 1} of{' '}
+              {Math.max(1, table.getPageCount())}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="h-8 px-3 text-xs"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-b">
+  <title id="title-b">AutoTray-Router — Concept B: 90° Cable Tray Routing Elbow</title>
+  
+  <!-- Radial Ladder Rungs (Connecting inner and outer rails) -->
+  <!-- Rung 1 (0 deg horizontal) -->
+  <rect x="76" y="206" width="140" height="12" rx="2" fill="#334155"/>
+  <!-- Rung 2 (22.5 deg) -->
+  <polygon points="102,184 212,139 216,150 106,195" fill="#334155"/>
+  <!-- Rung 3 (45 deg diagonal) -->
+  <polygon points="134,134 219,49 227,57 142,142" fill="#334155"/>
+  <!-- Rung 4 (67.5 deg) -->
+  <polygon points="184,102 139,212 150,216 195,106" fill="#334155"/>
+  <!-- Rung 5 (90 deg vertical) -->
+  <rect x="206" y="76" width="12" height="140" rx="2" fill="#334155"/>
+
+  <!-- Concentric Routed Cables turning the 90° bend -->
+  <!-- Cable 1 (Power - Blue) -->
+  <path d="M 40 188 A 148 148 0 0 1 188 40" fill="none" stroke="#2563EB" stroke-width="12" stroke-linecap="round"/>
+  <!-- Cable 2 (Control - Amber) -->
+  <path d="M 40 158 A 118 118 0 0 1 158 40" fill="none" stroke="#E65100" stroke-width="12" stroke-linecap="round"/>
+  <!-- Cable 3 (Data - Green) -->
+  <path d="M 40 128 A 88 88 0 0 1 128 40" fill="none" stroke="#059669" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Outer Heavy C-Channel Side Rail (R=184 to 204) -->
+  <path d="
+    M 36 220
+    A 184 184 0 0 1 220 36
+    L 220 20
+    A 200 200 0 0 0 20 220
+    Z
+  " fill="#0F172A"/>
+
+  <!-- Inner Heavy C-Channel Side Rail (R=60 to 76) -->
+  <path d="
+    M 36 104
+    A 68 68 0 0 1 104 36
+    L 104 20
+    A 84 84 0 0 0 20 104
+    Z
+  " fill="#0F172A"/>
+</svg>

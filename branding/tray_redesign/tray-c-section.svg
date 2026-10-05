@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-c">
+  <title id="title-c">AutoTray-Router — Concept C: Tray Cross-Section Sizing</title>
+  
+  <!-- Heavy-Duty U-Profile Cable Tray Body with Return Flanges -->
+  <path fill="#0F172A" fill-rule="evenodd" d="
+    M 28 68
+    H 56
+    V 84
+    H 44
+    V 188
+    H 212
+    V 84
+    H 200
+    V 68
+    H 228
+    V 204
+    H 28
+    Z
+  "/>
+
+  <!-- Central Metallic Segregation Barrier (NEC 392 Separator) -->
+  <path fill="#0F172A" d="
+    M 122 80
+    H 134
+    V 188
+    H 122
+    Z
+  "/>
+
+  <!-- Left Compartment: Power Cables (Single layer, spaced) -->
+  <!-- Power Core 1 (Blue) -->
+  <circle cx="70" cy="154" r="22" fill="#2563EB"/>
+  <circle cx="70" cy="154" r="10" fill="#93C5FD"/>
+  <!-- Power Core 2 (Blue) -->
+  <circle cx="106" cy="162" r="14" fill="#2563EB"/>
+  <circle cx="106" cy="162" r="6" fill="#93C5FD"/>
+
+  <!-- Right Compartment: Control & Data Cables (Multilayer packed) -->
+  <!-- Control Bundle 1 (Amber) -->
+  <circle cx="152" cy="166" r="10" fill="#E65100"/>
+  <circle cx="174" cy="166" r="10" fill="#E65100"/>
+  <circle cx="196" cy="166" r="10" fill="#E65100"/>
+  <!-- Control Bundle 2 (Amber / Green) -->
+  <circle cx="163" cy="148" r="10" fill="#FF8C00"/>
+  <circle cx="185" cy="148" r="10" fill="#059669"/>
+  <!-- Control Bundle 3 -->
+  <circle cx="174" cy="130" r="10" fill="#10B981"/>
+
+  <!-- Dimension / Sizing Bracket Indicator at Bottom -->
+  <path d="M 28 220 H 228" stroke="#E65100" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 28 214 V 226 M 228 214 V 226" stroke="#E65100" stroke-width="3"/>
+  <path d="M 128 214 V 226" stroke="#E65100" stroke-width="1.5"/>
+</svg>

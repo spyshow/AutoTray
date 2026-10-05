@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-c">
+  <title id="title-c">AutoTray-Router — Concept C: Segregated Channel</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 36 40
+    H 220
+    V 80
+    H 148
+    V 184
+    H 188
+    V 112
+    H 220
+    V 216
+    H 36
+    V 112
+    H 68
+    V 184
+    H 108
+    V 80
+    H 36
+    Z
+    M 88 148
+    A 20 20 0 1 0 88 147.9
+    Z
+    M 168 136
+    A 11 11 0 1 0 168 135.9
+    Z
+    M 168 168
+    A 11 11 0 1 0 168 167.9
+    Z
+  "/>
+</svg>
