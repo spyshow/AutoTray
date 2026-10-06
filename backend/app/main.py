@@ -45,6 +45,7 @@ def calculate_sizing(request: CalculationRequest):
             parameters=request.parameters,
             branches=request.branches,
             cables=request.cables,
+            node_fittings=request.node_fittings,
         )
         return response
     except Exception as e:

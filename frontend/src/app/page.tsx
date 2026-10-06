@@ -7,6 +7,8 @@ import {
   Cable,
   CalculationResponse,
   Project,
+  NodeFittingConfig,
+  NodePortReducer,
 } from '@/lib/types';
 import { DEFAULT_PARAMETERS, SAMPLE_BRANCHES, SAMPLE_CABLES } from '@/lib/sample-data';
 import {
@@ -24,6 +26,7 @@ import { KpiCards } from '@/components/kpi-cards';
 import { ResultsTable } from '@/components/results-table';
 import { CablesTable } from '@/components/cables-table';
 import { BranchesTable } from '@/components/branches-table';
+import { NodesFittingsTab } from '@/components/nodes-fittings-tab';
 import { NetworkGraphView } from '@/components/network-graph-view';
 import { MappingModal } from '@/components/mapping-modal';
 import { DefaultsSettingsTab } from '@/components/defaults-settings-tab';
@@ -41,6 +44,7 @@ import {
   Cable as CableIcon,
   Layers,
   Network,
+  GitBranch,
   AlertTriangle,
   Sliders,
   Package,
@@ -56,6 +60,7 @@ export default function AutoTrayRouterPage() {
   const [parameters, setParameters] = useState<CalculationParameters>(DEFAULT_PARAMETERS);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [cables, setCables] = useState<Cable[]>([]);
+  const [nodeConfigs, setNodeConfigs] = useState<Record<string, NodeFittingConfig>>({});
   const [calculationResult, setCalculationResult] = useState<CalculationResponse | null>(null);
 
   const [activeTab, setActiveTab] = useState<string>('branches');
@@ -92,9 +97,10 @@ export default function AutoTrayRouterPage() {
     setParameters(proj.parameters || DEFAULT_PARAMETERS);
     setBranches(proj.branches || []);
     setCables(proj.cables || []);
+    setNodeConfigs(proj.node_fittings || {});
   };
 
-  // 2. Persist project changes whenever parameters, branches, or cables update
+  // 2. Persist project changes whenever parameters, branches, cables, or nodeConfigs update
   useEffect(() => {
     if (!isMountedRef.current || !activeProject) return;
 
@@ -102,16 +108,17 @@ export default function AutoTrayRouterPage() {
       parameters,
       branches,
       cables,
+      node_fittings: nodeConfigs,
     });
 
     setProjects(prev =>
       prev.map(p =>
         p.id === activeProject.id
-          ? { ...p, parameters, branches, cables, updatedAt: new Date().toISOString() }
+          ? { ...p, parameters, branches, cables, node_fittings: nodeConfigs, updatedAt: new Date().toISOString() }
           : p
       )
     );
-  }, [parameters, branches, cables, activeProject?.id]);
+  }, [parameters, branches, cables, nodeConfigs, activeProject?.id]);
 
   // 3. Calculation Runner
   const runCalculation = useCallback(async () => {
@@ -128,11 +135,12 @@ export default function AutoTrayRouterPage() {
           parameters,
           branches,
           cables,
+          node_fittings: nodeConfigs,
         });
         setCalculationResult(res);
       } catch (backendErr) {
         // Fallback to high-performance client-side graph engine
-        const fallbackRes = solveRoutingAndSizingClient(parameters, branches, cables);
+        const fallbackRes = solveRoutingAndSizingClient(parameters, branches, cables, nodeConfigs);
         setCalculationResult(fallbackRes);
       }
     } catch (err: any) {
@@ -140,14 +148,54 @@ export default function AutoTrayRouterPage() {
     } finally {
       setIsCalculating(false);
     }
-  }, [parameters, branches, cables]);
+  }, [parameters, branches, cables, nodeConfigs]);
 
-  // Auto-recalculate when branches, cables, or parameters change
+  // Auto-recalculate when branches, cables, parameters, or nodeConfigs change
   useEffect(() => {
     if (isMountedRef.current) {
       runCalculation();
     }
   }, [runCalculation]);
+
+  // Node fitting modification handlers
+  const handleChangeNodeConfig = (nodeId: string, updated: NodeFittingConfig) => {
+    setNodeConfigs(prev => ({
+      ...prev,
+      [nodeId]: updated,
+    }));
+  };
+
+  const handleResetNode = (nodeId: string) => {
+    setNodeConfigs(prev => {
+      const next = { ...prev };
+      delete next[nodeId];
+      return next;
+    });
+  };
+
+  const handleResetAllNodes = () => {
+    setNodeConfigs({});
+  };
+
+  const handleToggleAllReducers = (enabled: boolean) => {
+    if (!calculationResult?.nodes) return;
+    setNodeConfigs(prev => {
+      const next = { ...prev };
+      calculationResult.nodes!.forEach(n => {
+        const existing = next[n.node_id] || { node_id: n.node_id };
+        const updatedReducers: Record<string, NodePortReducer> = {};
+        Object.entries(n.reducers).forEach(([bId, r]) => {
+          updatedReducers[bId] = { ...r, enabled };
+        });
+        next[n.node_id] = {
+          ...existing,
+          reducers: updatedReducers,
+          user_override: true,
+        };
+      });
+      return next;
+    });
+  };
 
   // Project Management Handlers
   const handleCreateProject = (name: string, code: string, description: string) => {
@@ -420,31 +468,40 @@ export default function AutoTrayRouterPage() {
                 2. Cables Schedule ({cables.length})
               </TabsTrigger>
 
-              {/* STEP 3: Multi-Level Plant Topology */}
+              {/* STEP 3: Nodes & Fittings */}
               <TabsTrigger
-                value="graph"
+                value="nodes"
                 className="text-xs gap-1.5 font-semibold data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700"
               >
-                <Network className="h-3.5 w-3.5 text-purple-600" />
-                3. Multi-Level Plant Topology
+                <GitBranch className="h-3.5 w-3.5 text-purple-600" />
+                3. Nodes &amp; Fittings ({calculationResult?.nodes?.length || 0})
               </TabsTrigger>
 
-              {/* STEP 4: Sizing Results Dashboard */}
+              {/* STEP 4: Multi-Level Plant Topology */}
+              <TabsTrigger
+                value="graph"
+                className="text-xs gap-1.5 font-semibold data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700"
+              >
+                <Network className="h-3.5 w-3.5 text-indigo-600" />
+                4. Multi-Level Plant Topology
+              </TabsTrigger>
+
+              {/* STEP 5: Sizing Results Dashboard */}
               <TabsTrigger
                 value="results"
                 className="text-xs gap-1.5 font-semibold data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700"
               >
                 <LayoutDashboard className="h-3.5 w-3.5 text-emerald-600" />
-                4. Sizing Results Dashboard
+                5. Sizing Results Dashboard
               </TabsTrigger>
 
-              {/* STEP 5: Bill of Materials (BOM) */}
+              {/* STEP 6: Bill of Materials (BOM) */}
               <TabsTrigger
                 value="bom"
                 className="text-xs gap-1.5 font-semibold data-[state=active]:bg-amber-50 data-[state=active]:text-amber-800"
               >
                 <Package className="h-3.5 w-3.5 text-amber-600" />
-                5. Bill of Materials (BOM)
+                6. Bill of Materials (BOM)
               </TabsTrigger>
             </TabsList>
 
@@ -493,7 +550,19 @@ export default function AutoTrayRouterPage() {
             />
           </TabsContent>
 
-          {/* TAB 3: Network Topology Graph */}
+          {/* TAB 3: Nodes & Fittings Table */}
+          <TabsContent value="nodes">
+            <NodesFittingsTab
+              nodes={calculationResult?.nodes || []}
+              nodeConfigs={nodeConfigs}
+              onChangeNodeConfig={handleChangeNodeConfig}
+              onResetNode={handleResetNode}
+              onResetAllNodes={handleResetAllNodes}
+              onToggleAllReducers={handleToggleAllReducers}
+            />
+          </TabsContent>
+
+          {/* TAB 4: Network Topology Graph */}
           <TabsContent value="graph">
             <NetworkGraphView
               branches={branches}
@@ -502,7 +571,7 @@ export default function AutoTrayRouterPage() {
             />
           </TabsContent>
 
-          {/* TAB 4: Sizing Results Dashboard */}
+          {/* TAB 5: Sizing Results Dashboard */}
           <TabsContent value="results">
             <ResultsTable
               data={calculationResult?.branches || []}
@@ -511,7 +580,7 @@ export default function AutoTrayRouterPage() {
             />
           </TabsContent>
 
-          {/* TAB 5: Bill of Materials (BOM) */}
+          {/* TAB 6: Bill of Materials (BOM) */}
           <TabsContent value="bom">
             <BomTab
               bom={calculationResult?.bom}

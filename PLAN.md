@@ -503,5 +503,43 @@ This task introduces a project-level setting `control_cable_laying_method`:
   - In `Settings > Project Parameters`, users can toggle between:
     - **Multi-layer Stacked (Area Fill Method)** [NEC 392 / IEC Standard]
     - **Single Layer Flat (Touching)** [Full OD]
-  - When **Single Layer Flat** is active, the cables table displays the **Flat Touching** badge, and width contributions are calculated as $\text{OD} \times \text{Qty} \times (1 + \text{Spare Margin})$.
+
+---
+
+## 14. Task: Dedicated Nodes & Cable Tray Fittings Page with Smart Fitting Sizing, Reducer Detection & BOM Integration
+### Goal & Motivation
+In industrial cable tray design, intersection and termination nodes represent physical tray fittings (Horizontal Tees, 90°/45° Elbows, 4-Way Crosses, Vertical Riser Bends, Straight Couplers, and End Caps).
+When branches of differing widths converge at a node (e.g. Branch A = 400mm, Branch B = 400mm, Branch C = 200mm at Node 1):
+1. The fitting must adapt its nominal size to the **widest connected branch** (here, 400mm).
+2. Any narrower branch (Branch C: 200mm) requires an in-line **Reducer** (e.g. 400mm -> 200mm) installed at that port.
+3. These fittings and reducers must be accurately quantified and listed in the Bill of Materials (BOM) and the exported Excel engineering report.
+
+### Implementation Steps
+1. **Data Models (`frontend/src/lib/types.ts` & `backend/app/models.py`)**:
+   - Define `FittingType`, `ReducerType`, `NodePortReducer`, `NodeFittingConfig`, `FittingBomItem`, and `ReducerBomItem`.
+   - Add `node_fittings?: Record<string, NodeFittingConfig>` to `Project` and `CalculationResponse`.
+2. **Fittings Calculation Engine (`frontend/src/lib/fittings-engine.ts` & `backend/app/routing_engine.py`)**:
+   - Extract unique topological nodes from branches.
+   - Auto-suggest default fitting types by branch degree and orientation (4 branches -> Cross, 3 branches -> Tee, 2 branches -> Elbow/Riser, 1 branch -> End Cap).
+   - Adapt fitting size to $\max(\text{connected branch widths})$.
+   - Compute port-specific reducers for branches with $\text{width} < \text{max width}$ with toggle and geometry selection (Concentric, Left/Right Eccentric).
+   - Aggregate fittings and reducers into `BillOfMaterials`.
+3. **UI - Nodes & Fittings Workspace Tab (`frontend/src/components/nodes-fittings-tab.tsx` & `page.tsx`)**:
+   - Dedicated tab: `3. Nodes & Fittings` in main navigation.
+   - Interactive table: Node ID, Level, Connected Branches with Sized Widths, Fitting Type dropdown, Nominal Size, Port Reducers with enable/disable toggles and geometry selector, and Reset actions.
+4. **UI - BOM Tab Integration (`frontend/src/components/bom-tab.tsx`)**:
+   - Add dedicated "Tray Fittings & Reducers Schedule" section with KPIs and detailed schedules.
+5. **Excel Export (`backend/app/excel_exporter.py`)**:
+   - Add dedicated "Fittings & Reducers" worksheet with professional engineering styling.
+
+### Verification & Proof (COMPLETED)
+- **Frontend Unit Tests** (`frontend/src/tests/fittings.test.mjs`):
+  - Added 3 comprehensive test suites: Heuristic detection by branch count and orientation, node sizing adaptation to max branch width with automatic reducer generation, and user overrides persistence.
+  - Run `npm test` in `frontend/`: 63/63 unit tests passing.
+- **Backend Unit Tests** (`backend/tests/test_routing_engine.py` & `backend/tests/test_excel_exporter.py`):
+  - Added unit test `test_network_node_fittings_and_reducers` and updated `test_excel_export_generation` to assert the new `Fittings & Reducers` Excel worksheet.
+  - Run `.\.venv\Scripts\python.exe -m pytest tests` in `backend/`: 34/34 pytest tests passing.
+- **Frontend Production Build**:
+  - Run `npm run build` in `frontend/`: Clean Turbopack compilation with 0 TypeScript/ESLint errors in 3.2s.
+
 

@@ -13,8 +13,11 @@ import {
   AccessoryBomItem,
   CableBomItem,
   CableFormation,
+  CalculatedNodeFitting,
+  NodeFittingConfig,
 } from './types';
 import { lookupCatalogCableOd } from './cable-catalog';
+import { calculateNetworkNodeFittings, generateFittingsAndReducersBom } from './fittings-engine';
 
 export const STANDARD_COMMERCIAL_WIDTHS = [50, 75, 100, 150, 200, 300, 400, 450, 500, 600, 700];
 
@@ -157,7 +160,8 @@ function findNodeSuggestion(target: string, existingNodes: Set<string>, exclude?
 export function solveRoutingAndSizingClient(
   parameters: CalculationParameters,
   branches: Branch[],
-  cables: Cable[]
+  cables: Cable[],
+  nodeConfigs?: Record<string, NodeFittingConfig> | null
 ): CalculationResponse {
   // Build graph adjacency list with Canonical Node Mapping
   const adj = new Map<string, GraphEdge[]>();
@@ -621,7 +625,14 @@ export function solveRoutingAndSizingClient(
     unrouted_cables_details: cableRoutingResults.filter(c => c.status === 'UNROUTED'),
   };
 
-  const bom = generateBillOfMaterialsClient(parameters, branchResults, cableRoutingResults);
+  const calculatedNodes = calculateNetworkNodeFittings(
+    branches,
+    branchResults,
+    nodeConfigs,
+    parameters.default_tray_height_mm
+  );
+
+  const bom = generateBillOfMaterialsClient(parameters, branchResults, cableRoutingResults, calculatedNodes);
 
   return {
     summary,
@@ -629,13 +640,15 @@ export function solveRoutingAndSizingClient(
     cables: cableRoutingResults,
     diagnostics,
     bom,
+    nodes: calculatedNodes,
   };
 }
 
 export function generateBillOfMaterialsClient(
   parameters: CalculationParameters,
   branches: BranchSizingResult[],
-  cables: CableRoutingResult[]
+  cables: CableRoutingResult[],
+  nodeFittings?: CalculatedNodeFitting[]
 ): BillOfMaterials {
   const trayGroups = new Map<string, {
     width_mm: number;
@@ -755,12 +768,20 @@ export function generateBillOfMaterialsClient(
     }))
     .sort((a, b) => a.cable_type.localeCompare(b.cable_type));
 
+  const { fittings, reducers } = generateFittingsAndReducersBom(nodeFittings || []);
+  const totalFittingsCount = fittings.reduce((sum, f) => sum + f.quantity, 0);
+  const totalReducersCount = reducers.reduce((sum, r) => sum + r.quantity, 0);
+
   return {
     trays: trayItems,
     accessories,
     cables_summary: cablesSummary,
+    fittings,
+    reducers,
     total_tray_length_m: Number(totalTrayLen.toFixed(2)),
     total_sections_3m: totalSections,
     total_cable_length_m: Number(totalCableLen.toFixed(2)),
+    total_fittings_count: totalFittingsCount,
+    total_reducers_count: totalReducersCount,
   };
 }

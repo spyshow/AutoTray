@@ -572,3 +572,42 @@ def test_control_cable_laying_method_multi_vs_single_layer():
     assert resp_single.branches[0].calculated_width_mm == 13.0
 
 
+def test_network_node_fittings_and_reducers():
+    from app.models import NodeFittingConfig, NodePortReducer
+
+    params = CalculationParameters()
+    branches = [
+        Branch(branch_id="BR_A", node_from="NODE_1", node_to="NODE_2", level="Level 1", branch_type="horizontal", length_m=10.0),
+        Branch(branch_id="BR_B", node_from="NODE_1", node_to="NODE_3", level="Level 1", branch_type="horizontal", length_m=10.0),
+        Branch(branch_id="BR_C", node_from="NODE_1", node_to="NODE_4", level="Level 1", branch_type="horizontal", length_m=10.0),
+    ]
+    cables = [
+        # Heavy cables on BR_A and BR_B (size up to 400mm)
+        Cable(cable_tag="C1", source_node="NODE_2", dest_node="NODE_3", cable_type="power", od_mm=50.0, count=4),
+        # Small cable on BR_C
+        Cable(cable_tag="C2", source_node="NODE_1", dest_node="NODE_4", cable_type="power", od_mm=10.0, count=1),
+    ]
+
+    resp = solve_routing_and_sizing(params, branches, cables)
+    assert resp.nodes is not None
+    node1 = next((n for n in resp.nodes if n.node_id == "NODE_1"), None)
+    assert node1 is not None
+    assert node1.detected_fitting_type == "horizontal_tee"
+    assert node1.selected_fitting_type == "horizontal_tee"
+    assert node1.width_mm >= 400
+
+    # BR_C is smaller, so it gets a reducer
+    assert "BR_C" in node1.reducers
+    red_c = node1.reducers["BR_C"]
+    assert red_c.from_width_mm == node1.width_mm
+    assert red_c.to_width_mm < red_c.from_width_mm
+    assert red_c.enabled is True
+
+    # Check BOM has fitting and reducer
+    assert resp.bom is not None
+    assert resp.bom.total_fittings_count > 0
+    assert any(f.fitting_type == "horizontal_tee" for f in resp.bom.fittings)
+    assert resp.bom.total_reducers_count > 0
+    assert any(r.from_width_mm == red_c.from_width_mm and r.to_width_mm == red_c.to_width_mm for r in resp.bom.reducers)
+
+

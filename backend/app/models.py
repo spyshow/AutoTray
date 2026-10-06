@@ -22,6 +22,65 @@ class BranchStatus(str, Enum):
     EMPTY = "EMPTY"
 
 
+class FittingType(str, Enum):
+    HORIZONTAL_TEE = "horizontal_tee"
+    HORIZONTAL_ELBOW_90 = "horizontal_elbow_90"
+    HORIZONTAL_ELBOW_45 = "horizontal_elbow_45"
+    HORIZONTAL_CROSS = "horizontal_cross"
+    VERTICAL_INSIDE_RISER = "vertical_inside_riser"
+    VERTICAL_OUTSIDE_RISER = "vertical_outside_riser"
+    STRAIGHT_COUPLER = "straight_coupler"
+    END_CAP = "end_cap"
+    NONE = "none"
+
+
+class ReducerType(str, Enum):
+    CONCENTRIC = "concentric"
+    ECCENTRIC_LEFT = "eccentric_left"
+    ECCENTRIC_RIGHT = "eccentric_right"
+
+
+class NodePortReducer(BaseModel):
+    branch_id: str
+    from_width_mm: int
+    to_width_mm: int
+    height_mm: float
+    reducer_type: str = "concentric"
+    enabled: bool = True
+
+
+class NodeFittingConfig(BaseModel):
+    node_id: str
+    fitting_type: Optional[str] = None
+    user_override: bool = False
+    notes: Optional[str] = None
+    reducers: Dict[str, NodePortReducer] = Field(default_factory=dict)
+
+
+class ConnectedBranchInfo(BaseModel):
+    branch_id: str
+    node_from: str
+    node_to: str
+    level: str
+    branch_type: str
+    width_mm: int
+    height_mm: float
+    length_m: float
+
+
+class CalculatedNodeFitting(BaseModel):
+    node_id: str
+    level: str = "Level 1"
+    connected_branches: List[ConnectedBranchInfo] = []
+    detected_fitting_type: str
+    selected_fitting_type: str
+    user_override: bool = False
+    width_mm: int
+    height_mm: float
+    reducers: Dict[str, NodePortReducer] = Field(default_factory=dict)
+    notes: Optional[str] = None
+
+
 class CalculationParameters(BaseModel):
     spare_margin_pct: float = Field(20.0, ge=0.0, le=200.0, description="Spare margin percentage (e.g. 20%)")
     control_fill_pct: float = Field(40.0, gt=0.0, le=100.0, description="Maximum control cable fill factor (e.g. 40%)")
@@ -110,6 +169,7 @@ class CalculationRequest(BaseModel):
     parameters: CalculationParameters = Field(default_factory=CalculationParameters)
     branches: List[Branch] = Field(..., min_length=1)
     cables: List[Cable] = Field(..., min_length=1)
+    node_fittings: Optional[Dict[str, NodeFittingConfig]] = None
 
 
 class CableRoutedDetail(BaseModel):
@@ -207,13 +267,35 @@ class CableBomItem(BaseModel):
     avg_length_m: float
 
 
+class FittingBomItem(BaseModel):
+    fitting_type: str
+    fitting_name: str
+    width_mm: int
+    height_mm: float
+    quantity: int
+    nodes: List[str] = Field(default_factory=list)
+
+
+class ReducerBomItem(BaseModel):
+    from_width_mm: int
+    to_width_mm: int
+    height_mm: float
+    reducer_type: str = "concentric"
+    quantity: int
+    locations: List[Dict[str, str]] = Field(default_factory=list)
+
+
 class BillOfMaterials(BaseModel):
     trays: List[TrayBomItem] = []
     accessories: List[AccessoryBomItem] = []
     cables_summary: List[CableBomItem] = []
+    fittings: List[FittingBomItem] = []
+    reducers: List[ReducerBomItem] = []
     total_tray_length_m: float = 0.0
     total_sections_3m: int = 0
     total_cable_length_m: float = 0.0
+    total_fittings_count: int = 0
+    total_reducers_count: int = 0
 
 
 class CalculationResponse(BaseModel):
@@ -222,3 +304,5 @@ class CalculationResponse(BaseModel):
     cables: List[CableRoutingResult] = []
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     bom: Optional[BillOfMaterials] = None
+    nodes: List[CalculatedNodeFitting] = []
+

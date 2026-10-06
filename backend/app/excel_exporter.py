@@ -374,8 +374,69 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
         ws_bom.cell(row=cur_row, column=1, value="No tray materials routed.").font = status_empty_font
         cur_row += 2
 
-    # 2. Accessories Table
-    ws_bom.cell(row=cur_row, column=1, value="2. INSTALLATION ACCESSORIES & HARDWARE").font = section_font
+    # 2. Cable Tray Fittings & In-Line Reducers Schedule
+    ws_bom.cell(row=cur_row, column=1, value="2. CABLE TRAY FITTINGS & IN-LINE REDUCERS SCHEDULE").font = section_font
+    cur_row += 1
+
+    # 2A. Fittings Table
+    fit_headers = ["Fitting Description / Item", "Nominal Width (mm)", "Side Height (mm)", "Quantity (pcs)", "Applicable Junction Nodes"]
+    for col_num, h in enumerate(fit_headers, 1):
+        cell = ws_bom.cell(row=cur_row, column=col_num, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+    ws_bom.row_dimensions[cur_row].height = 26
+    cur_row += 1
+
+    if bom_data and bom_data.fittings:
+        for fit in bom_data.fittings:
+            ws_bom.cell(row=cur_row, column=1, value=fit.fitting_name).font = bold_regular_font
+            ws_bom.cell(row=cur_row, column=2, value=fit.width_mm).font = regular_font
+            ws_bom.cell(row=cur_row, column=3, value=fit.height_mm).font = regular_font
+            ws_bom.cell(row=cur_row, column=4, value=fit.quantity).font = bold_regular_font
+            ws_bom.cell(row=cur_row, column=5, value=", ".join(fit.nodes)).font = regular_font
+            for c in range(1, 6):
+                ws_bom.cell(row=cur_row, column=c).border = thin_border
+                ws_bom.cell(row=cur_row, column=c).alignment = center_align if c in [2, 3, 4] else left_align
+            cur_row += 1
+        cur_row += 1
+    else:
+        ws_bom.cell(row=cur_row, column=1, value="No tray fittings required.").font = status_empty_font
+        cur_row += 2
+
+    # 2B. Reducers Table
+    red_headers = ["Reduction Step (W1 -> W2)", "From Width (mm)", "To Width (mm)", "Side Height (mm)", "Geometry Type", "Quantity (pcs)", "Installed Locations (Node:Branch)"]
+    for col_num, h in enumerate(red_headers, 1):
+        cell = ws_bom.cell(row=cur_row, column=col_num, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+    ws_bom.row_dimensions[cur_row].height = 26
+    cur_row += 1
+
+    if bom_data and bom_data.reducers:
+        for red in bom_data.reducers:
+            ws_bom.cell(row=cur_row, column=1, value=f"{red.from_width_mm}mm -> {red.to_width_mm}mm").font = bold_regular_font
+            ws_bom.cell(row=cur_row, column=2, value=red.from_width_mm).font = regular_font
+            ws_bom.cell(row=cur_row, column=3, value=red.to_width_mm).font = regular_font
+            ws_bom.cell(row=cur_row, column=4, value=red.height_mm).font = regular_font
+            ws_bom.cell(row=cur_row, column=5, value=red.reducer_type.replace('_', ' ').title()).font = regular_font
+            ws_bom.cell(row=cur_row, column=6, value=red.quantity).font = bold_regular_font
+            loc_str = ", ".join(f"{loc.get('node_id', '')}:{loc.get('branch_id', '')}" for loc in red.locations)
+            ws_bom.cell(row=cur_row, column=7, value=loc_str).font = regular_font
+            for c in range(1, 8):
+                ws_bom.cell(row=cur_row, column=c).border = thin_border
+                ws_bom.cell(row=cur_row, column=c).alignment = center_align if c in [2, 3, 4, 5, 6] else left_align
+            cur_row += 1
+        cur_row += 1
+    else:
+        ws_bom.cell(row=cur_row, column=1, value="No in-line reducers required.").font = status_empty_font
+        cur_row += 2
+
+    # 3. Accessories Table
+    ws_bom.cell(row=cur_row, column=1, value="3. INSTALLATION ACCESSORIES & HARDWARE").font = section_font
     cur_row += 1
 
     acc_headers = ["Item Name", "Category", "Specification / Description", "Estimated Quantity", "Unit"]
@@ -407,8 +468,8 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
         ws_bom.cell(row=cur_row, column=1, value="No accessories required.").font = status_empty_font
         cur_row += 2
 
-    # 3. Cable Length Summary Table
-    ws_bom.cell(row=cur_row, column=1, value="3. CABLE SCHEDULE LENGTH TAKE-OFF").font = section_font
+    # 4. Cable Length Summary Table
+    ws_bom.cell(row=cur_row, column=1, value="4. CABLE SCHEDULE LENGTH TAKE-OFF").font = section_font
     cur_row += 1
 
     cable_bom_headers = ["Cable Category / Type", "Routed Cable Count", "Total Routed Distance (m)", "Average Run (m)"]
@@ -445,8 +506,108 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
         ws_bom.cell(row=cur_row, column=1, value="No routed cables found.").font = status_empty_font
         cur_row += 2
 
+    # =========================================================================
+    # SHEET 6: Fittings & Reducers (Dedicated Sheet)
+    # =========================================================================
+    ws_fittings = wb.create_sheet(title="Fittings & Reducers")
+    ws_fittings.views.sheetView[0].showGridLines = True
+
+    ws_fittings.cell(row=2, column=1, value="AUTO-TRAY ROUTER - FITTINGS & REDUCERS SCHEDULE").font = title_font
+    ws_fittings.cell(row=3, column=1, value="Comprehensive junction fittings schedule, nominal dimensions, and port-specific reduction take-off.").font = subtitle_font
+
+    r_cur = 5
+    ws_fittings.cell(row=r_cur, column=1, value="1. TRAY FITTINGS SCHEDULE").font = section_font
+    r_cur += 1
+
+    f_headers = ["Fitting Item Name", "Fitting Type", "Nominal Width (mm)", "Side Height (mm)", "Quantity (pcs)", "Applicable Nodes"]
+    for col_num, h in enumerate(f_headers, 1):
+        cell = ws_fittings.cell(row=r_cur, column=col_num, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+    ws_fittings.row_dimensions[r_cur].height = 26
+    r_cur += 1
+
+    if bom_data and bom_data.fittings:
+        for fit in bom_data.fittings:
+            ws_fittings.cell(row=r_cur, column=1, value=fit.fitting_name).font = bold_regular_font
+            ws_fittings.cell(row=r_cur, column=2, value=fit.fitting_type).font = regular_font
+            ws_fittings.cell(row=r_cur, column=3, value=fit.width_mm).font = regular_font
+            ws_fittings.cell(row=r_cur, column=4, value=fit.height_mm).font = regular_font
+            ws_fittings.cell(row=r_cur, column=5, value=fit.quantity).font = bold_regular_font
+            ws_fittings.cell(row=r_cur, column=6, value=", ".join(fit.nodes)).font = regular_font
+            for c in range(1, 7):
+                ws_fittings.cell(row=r_cur, column=c).border = thin_border
+                ws_fittings.cell(row=r_cur, column=c).alignment = center_align if c in [2, 3, 4, 5] else left_align
+            r_cur += 1
+        r_cur += 1
+    else:
+        ws_fittings.cell(row=r_cur, column=1, value="No tray fittings required.").font = status_empty_font
+        r_cur += 2
+
+    # 2. Reducers Schedule
+    ws_fittings.cell(row=r_cur, column=1, value="2. IN-LINE TRAY REDUCERS SCHEDULE").font = section_font
+    r_cur += 1
+
+    for col_num, h in enumerate(red_headers, 1):
+        cell = ws_fittings.cell(row=r_cur, column=col_num, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+    ws_fittings.row_dimensions[r_cur].height = 26
+    r_cur += 1
+
+    if bom_data and bom_data.reducers:
+        for red in bom_data.reducers:
+            ws_fittings.cell(row=r_cur, column=1, value=f"{red.from_width_mm}mm -> {red.to_width_mm}mm").font = bold_regular_font
+            ws_fittings.cell(row=r_cur, column=2, value=red.from_width_mm).font = regular_font
+            ws_fittings.cell(row=r_cur, column=3, value=red.to_width_mm).font = regular_font
+            ws_fittings.cell(row=r_cur, column=4, value=red.height_mm).font = regular_font
+            ws_fittings.cell(row=r_cur, column=5, value=red.reducer_type.replace('_', ' ').title()).font = regular_font
+            ws_fittings.cell(row=r_cur, column=6, value=red.quantity).font = bold_regular_font
+            loc_str = ", ".join(f"{loc.get('node_id', '')}:{loc.get('branch_id', '')}" for loc in red.locations)
+            ws_fittings.cell(row=r_cur, column=7, value=loc_str).font = regular_font
+            for c in range(1, 8):
+                ws_fittings.cell(row=r_cur, column=c).border = thin_border
+                ws_fittings.cell(row=r_cur, column=c).alignment = center_align if c in [2, 3, 4, 5, 6] else left_align
+            r_cur += 1
+        r_cur += 1
+    else:
+        ws_fittings.cell(row=r_cur, column=1, value="No in-line reducers required.").font = status_empty_font
+        r_cur += 2
+
+    # 3. Node Configuration Detail
+    if response.nodes:
+        ws_fittings.cell(row=r_cur, column=1, value="3. NETWORK JUNCTION NODES TOPOLOGY").font = section_font
+        r_cur += 1
+        n_headers = ["Node Tag", "Level / Elevation", "Connected Branches", "Selected Fitting Type", "Nominal Dimensions (WxH)", "Reducers Required"]
+        for col_num, h in enumerate(n_headers, 1):
+            cell = ws_fittings.cell(row=r_cur, column=col_num, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+            cell.border = thin_border
+        ws_fittings.row_dimensions[r_cur].height = 26
+        r_cur += 1
+
+        for node in response.nodes:
+            b_list = ", ".join(f"{b.branch_id}({b.width_mm}mm)" for b in node.connected_branches)
+            red_count = len([r for r in node.reducers.values() if r.enabled])
+            ws_fittings.cell(row=r_cur, column=1, value=node.node_id).font = bold_regular_font
+            ws_fittings.cell(row=r_cur, column=2, value=node.level).font = regular_font
+            ws_fittings.cell(row=r_cur, column=3, value=b_list).font = regular_font
+            ws_fittings.cell(row=r_cur, column=4, value=node.selected_fitting_type).font = regular_font
+            ws_fittings.cell(row=r_cur, column=5, value=f"{node.width_mm}x{node.height_mm} mm").font = bold_regular_font
+            ws_fittings.cell(row=r_cur, column=6, value=f"{red_count} active").font = regular_font
+            for c in range(1, 7):
+                ws_fittings.cell(row=r_cur, column=c).border = thin_border
+                ws_fittings.cell(row=r_cur, column=c).alignment = center_align if c in [2, 4, 5, 6] else left_align
+            r_cur += 1
+
     # Auto-adjust column widths for all sheets (capped to 50 for readability)
-    for ws in [ws_summary, ws_branches, ws_cables, ws_diag, ws_bom]:
+    for ws in [ws_summary, ws_branches, ws_cables, ws_diag, ws_bom, ws_fittings]:
         for col in ws.columns:
             max_len = 0
             col_letter = get_column_letter(col[0].column)

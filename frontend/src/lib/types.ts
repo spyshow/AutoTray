@@ -4,6 +4,60 @@ export type CableFormation = 'trefoil' | 'flat_touching' | 'flat_spaced';
 
 export type BranchOrientation = 'horizontal' | 'vertical';
 
+export type FittingType =
+  | 'horizontal_tee'
+  | 'horizontal_elbow_90'
+  | 'horizontal_elbow_45'
+  | 'horizontal_cross'
+  | 'vertical_inside_riser'
+  | 'vertical_outside_riser'
+  | 'straight_coupler'
+  | 'end_cap'
+  | 'none';
+
+export type ReducerType = 'concentric' | 'eccentric_left' | 'eccentric_right';
+
+export interface NodePortReducer {
+  branch_id: string;
+  from_width_mm: number;
+  to_width_mm: number;
+  height_mm: number;
+  reducer_type: ReducerType;
+  enabled: boolean;
+}
+
+export interface NodeFittingConfig {
+  node_id: string;
+  fitting_type?: FittingType;
+  user_override?: boolean;
+  notes?: string;
+  reducers?: Record<string, NodePortReducer>; // keyed by branch_id
+}
+
+export interface ConnectedBranchInfo {
+  branch_id: string;
+  node_from: string;
+  node_to: string;
+  level: string;
+  branch_type: BranchOrientation;
+  width_mm: number;
+  height_mm: number;
+  length_m: number;
+}
+
+export interface CalculatedNodeFitting {
+  node_id: string;
+  level: string;
+  connected_branches: ConnectedBranchInfo[];
+  detected_fitting_type: FittingType;
+  selected_fitting_type: FittingType;
+  user_override: boolean;
+  width_mm: number; // adapted to max branch width
+  height_mm: number;
+  reducers: Record<string, NodePortReducer>;
+  notes?: string;
+}
+
 export interface CalculationParameters {
   spare_margin_pct: number;
   control_fill_pct: number;
@@ -138,13 +192,35 @@ export interface CableBomItem {
   avg_length_m: number;
 }
 
+export interface FittingBomItem {
+  fitting_type: FittingType;
+  fitting_name: string;
+  width_mm: number;
+  height_mm: number;
+  quantity: number;
+  nodes: string[];
+}
+
+export interface ReducerBomItem {
+  from_width_mm: number;
+  to_width_mm: number;
+  height_mm: number;
+  reducer_type: ReducerType;
+  quantity: number;
+  locations: { node_id: string; branch_id: string }[];
+}
+
 export interface BillOfMaterials {
   trays: TrayBomItem[];
   accessories: AccessoryBomItem[];
   cables_summary: CableBomItem[];
+  fittings?: FittingBomItem[];
+  reducers?: ReducerBomItem[];
   total_tray_length_m: number;
   total_sections_3m: number;
   total_cable_length_m: number;
+  total_fittings_count?: number;
+  total_reducers_count?: number;
 }
 
 export interface CalculationResponse {
@@ -153,12 +229,14 @@ export interface CalculationResponse {
   cables: CableRoutingResult[];
   diagnostics: Diagnostics;
   bom?: BillOfMaterials;
+  nodes?: CalculatedNodeFitting[];
 }
 
 export interface CalculationRequest {
   parameters: CalculationParameters;
   branches: Branch[];
   cables: Cable[];
+  node_fittings?: Record<string, NodeFittingConfig>;
 }
 
 export interface Project {
@@ -171,6 +249,7 @@ export interface Project {
   parameters: CalculationParameters;
   branches: Branch[];
   cables: Cable[];
+  node_fittings?: Record<string, NodeFittingConfig>;
 }
 
 export interface ColumnMappingConfig {

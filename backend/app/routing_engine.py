@@ -17,9 +17,29 @@ from .models import (
     TrayBomItem,
     AccessoryBomItem,
     CableBomItem,
+    FittingBomItem,
+    ReducerBomItem,
     BillOfMaterials,
+    NodeFittingConfig,
+    NodePortReducer,
+    ConnectedBranchInfo,
+    CalculatedNodeFitting,
+    FittingType,
+    ReducerType,
 )
 from .cable_catalog import lookup_catalog_cable_od
+
+FITTING_TYPE_NAMES = {
+    "horizontal_tee": "Horizontal Tee (T-Piece)",
+    "horizontal_elbow_90": "Horizontal 90° Elbow",
+    "horizontal_elbow_45": "Horizontal 45° Elbow",
+    "horizontal_cross": "Horizontal 4-Way Cross",
+    "vertical_inside_riser": "Vertical Inside Riser Bend",
+    "vertical_outside_riser": "Vertical Outside Riser Bend",
+    "straight_coupler": "Straight Splice Coupler",
+    "end_cap": "End Cap / Terminal Drop",
+    "none": "None / Pass-Through",
+}
 
 STANDARD_COMMERCIAL_WIDTHS = [50, 75, 100, 150, 200, 300, 400, 450, 500, 600, 700]
 
@@ -165,10 +185,108 @@ def find_node_suggestion(target: str, existing_nodes: Set[str], exclude: Optiona
     return best_candidate
 
 
+def detect_default_fitting_type(connected: List[ConnectedBranchInfo]) -> str:
+    count = len(connected)
+    if count == 0:
+        return "none"
+    if count == 1:
+        return "end_cap"
+    if count == 2:
+        has_vertical = any(b.branch_type == "vertical" for b in connected)
+        has_horizontal = any(b.branch_type == "horizontal" for b in connected)
+        levels = {b.level for b in connected}
+        if (has_vertical and has_horizontal) or len(levels) > 1:
+            return "vertical_inside_riser"
+        return "horizontal_elbow_90"
+    if count == 3:
+        return "horizontal_tee"
+    return "horizontal_cross"
+
+
+def calculate_network_node_fittings(
+    branches: List[Branch],
+    branch_results: Optional[List[BranchSizingResult]] = None,
+    user_configs: Optional[Dict[str, NodeFittingConfig]] = None,
+    default_tray_height_mm: float = 60.0,
+) -> List[CalculatedNodeFitting]:
+    sizing_map = {r.branch_id: r for r in (branch_results or [])}
+    node_branches_map: Dict[str, List[ConnectedBranchInfo]] = {}
+    node_levels_map: Dict[str, Set[str]] = {}
+
+    for b in branches:
+        f = (b.node_from or "").strip()
+        t = (b.node_to or "").strip()
+        res = sizing_map.get(b.branch_id)
+        width = res.recommended_commercial_width_mm if res else 100
+        height = b.tray_height_mm or default_tray_height_mm or 60.0
+
+        b_info = ConnectedBranchInfo(
+            branch_id=b.branch_id,
+            node_from=f,
+            node_to=t,
+            level=b.level or "Level 1",
+            branch_type=b.branch_type or "horizontal",
+            width_mm=width,
+            height_mm=height,
+            length_m=b.length_m or 0.0,
+        )
+
+        if f:
+            node_branches_map.setdefault(f, []).append(b_info)
+            node_levels_map.setdefault(f, set()).add(b.level or "Level 1")
+        if t and t != f:
+            node_branches_map.setdefault(t, []).append(b_info)
+            node_levels_map.setdefault(t, set()).add(b.level or "Level 1")
+
+    calculated_nodes: List[CalculatedNodeFitting] = []
+    for node_id, connected in node_branches_map.items():
+        levels = sorted(list(node_levels_map.get(node_id, {"Level 1"})))
+        level_display = " / ".join(levels)
+        detected_type = detect_default_fitting_type(connected)
+        user_cfg = user_configs.get(node_id) if user_configs else None
+        selected_type = user_cfg.fitting_type if (user_cfg and user_cfg.fitting_type) else detected_type
+        user_override = bool(user_cfg and user_cfg.user_override and user_cfg.fitting_type)
+
+        max_width = max([b.width_mm for b in connected], default=100)
+        max_height = max([b.height_mm for b in connected], default=default_tray_height_mm)
+
+        reducers: Dict[str, NodePortReducer] = {}
+        for b in connected:
+            if b.width_mm < max_width and selected_type != "none":
+                saved_reducer = user_cfg.reducers.get(b.branch_id) if (user_cfg and user_cfg.reducers) else None
+                reducers[b.branch_id] = NodePortReducer(
+                    branch_id=b.branch_id,
+                    from_width_mm=max_width,
+                    to_width_mm=b.width_mm,
+                    height_mm=max_height,
+                    reducer_type=saved_reducer.reducer_type if saved_reducer else "concentric",
+                    enabled=saved_reducer.enabled if saved_reducer is not None else True,
+                )
+
+        calculated_nodes.append(
+            CalculatedNodeFitting(
+                node_id=node_id,
+                level=level_display,
+                connected_branches=connected,
+                detected_fitting_type=detected_type,
+                selected_fitting_type=selected_type,
+                user_override=user_override,
+                width_mm=max_width,
+                height_mm=max_height,
+                reducers=reducers,
+                notes=user_cfg.notes if user_cfg else None,
+            )
+        )
+
+    calculated_nodes.sort(key=lambda n: n.node_id)
+    return calculated_nodes
+
+
 def solve_routing_and_sizing(
     parameters: CalculationParameters,
     branches: List[Branch],
     cables: List[Cable],
+    node_fittings: Optional[Dict[str, NodeFittingConfig]] = None,
 ) -> CalculationResponse:
     # 1. Build Undirected Weighted Graph with Canonical Node Mapping
     G = nx.Graph()
@@ -614,7 +732,14 @@ def solve_routing_and_sizing(
         unrouted_cables_details=[c for c in cable_routing_results if c.status == "UNROUTED"],
     )
 
-    bom = generate_bill_of_materials(parameters, branch_results, cable_routing_results)
+    calculated_nodes = calculate_network_node_fittings(
+        branches=branches,
+        branch_results=branch_results,
+        user_configs=node_fittings,
+        default_tray_height_mm=default_h,
+    )
+
+    bom = generate_bill_of_materials(parameters, branch_results, cable_routing_results, calculated_nodes)
 
     return CalculationResponse(
         summary=summary,
@@ -622,6 +747,7 @@ def solve_routing_and_sizing(
         cables=cable_routing_results,
         diagnostics=diagnostics,
         bom=bom,
+        nodes=calculated_nodes,
     )
 
 
@@ -629,6 +755,7 @@ def generate_bill_of_materials(
     parameters: CalculationParameters,
     branches: List[BranchSizingResult],
     cables: List[CableRoutingResult],
+    node_fittings: Optional[List[CalculatedNodeFitting]] = None,
 ) -> BillOfMaterials:
     """Generate industrial Bill of Materials (BOM) & Material Take-Off."""
     # 1. Trays aggregated by (recommended_commercial_width_mm, tray_height_mm, branch_type)
@@ -749,11 +876,62 @@ def generate_bill_of_materials(
             )
         )
 
+    # 4. Fittings & Reducers
+    fitting_groups: Dict[tuple, Dict[str, Any]] = {}
+    reducer_groups: Dict[tuple, Dict[str, Any]] = {}
+
+    if node_fittings:
+        for node in node_fittings:
+            if node.selected_fitting_type != "none":
+                f_type = node.selected_fitting_type
+                f_key = (f_type, node.width_mm, node.height_mm)
+                f_name = FITTING_TYPE_NAMES.get(f_type, f_type)
+                if f_key not in fitting_groups:
+                    fitting_groups[f_key] = {
+                        "fitting_type": f_type,
+                        "fitting_name": f_name,
+                        "width_mm": node.width_mm,
+                        "height_mm": node.height_mm,
+                        "quantity": 0,
+                        "nodes": [],
+                    }
+                fitting_groups[f_key]["quantity"] += 1
+                fitting_groups[f_key]["nodes"].append(node.node_id)
+
+            for r in node.reducers.values():
+                if r.enabled and r.from_width_mm > r.to_width_mm:
+                    r_key = (r.from_width_mm, r.to_width_mm, r.height_mm, r.reducer_type)
+                    if r_key not in reducer_groups:
+                        reducer_groups[r_key] = {
+                            "from_width_mm": r.from_width_mm,
+                            "to_width_mm": r.to_width_mm,
+                            "height_mm": r.height_mm,
+                            "reducer_type": r.reducer_type,
+                            "quantity": 0,
+                            "locations": [],
+                        }
+                    reducer_groups[r_key]["quantity"] += 1
+                    reducer_groups[r_key]["locations"].append({"node_id": node.node_id, "branch_id": r.branch_id})
+
+    fittings: List[FittingBomItem] = [
+        FittingBomItem(**data)
+        for _, data in sorted(fitting_groups.items(), key=lambda x: (-x[0][1], x[0][0]))
+    ]
+    reducers: List[ReducerBomItem] = [
+        ReducerBomItem(**data)
+        for _, data in sorted(reducer_groups.items(), key=lambda x: (-x[0][0], -x[0][1]))
+    ]
+
     return BillOfMaterials(
         trays=tray_items,
         accessories=accessories,
         cables_summary=cables_summary,
+        fittings=fittings,
+        reducers=reducers,
         total_tray_length_m=round(total_tray_len, 2),
         total_sections_3m=total_sections,
         total_cable_length_m=round(total_cable_len, 2),
+        total_fittings_count=sum(f.quantity for f in fittings),
+        total_reducers_count=sum(r.quantity for r in reducers),
     )
+

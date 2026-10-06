@@ -25,7 +25,7 @@ def test_excel_export_generation():
 
     # Read back with openpyxl to verify valid workbook and expected sheets
     wb = openpyxl.load_workbook(io.BytesIO(content))
-    expected_sheets = ["Executive Summary", "Tray Sizing Results", "Cable Schedule", "Diagnostics", "Bill of Materials"]
+    expected_sheets = ["Executive Summary", "Tray Sizing Results", "Cable Schedule", "Diagnostics", "Bill of Materials", "Fittings & Reducers"]
     assert wb.sheetnames == expected_sheets
 
     # Verify content in Tray Sizing Results
@@ -37,6 +37,11 @@ def test_excel_export_generation():
     ws_bom = wb["Bill of Materials"]
     assert ws_bom.max_row >= 5
     assert "Bill of Materials" in str(ws_bom.cell(row=1, column=1).value)
+
+    # Verify Fittings & Reducers sheet content
+    ws_fittings = wb["Fittings & Reducers"]
+    assert ws_fittings.max_row >= 5
+    assert "FITTINGS & REDUCERS SCHEDULE" in str(ws_fittings.cell(row=2, column=1).value)
 
 
 def test_sample_template_generation():
