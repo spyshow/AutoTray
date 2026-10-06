@@ -12,14 +12,15 @@ import {
 } from '@/lib/types';
 import { DEFAULT_PARAMETERS, SAMPLE_BRANCHES, SAMPLE_CABLES } from '@/lib/sample-data';
 import {
-  getStoredProjects,
-  saveStoredProjects,
+  fetchProjectsFromDatabase,
+  fetchProjectFromDatabase,
+  createProjectInDatabase,
+  updateProjectInDatabase,
+  deleteProjectFromDatabase,
+  calculateProjectInDatabase,
   getStoredActiveProjectId,
   setStoredActiveProjectId,
-  createNewProject,
-  createDemoProject,
   updateStoredProject,
-  deleteStoredProject,
 } from '@/lib/project-storage';
 import { HeaderConfig } from '@/components/header-config';
 import { KpiCards } from '@/components/kpi-cards';
@@ -73,22 +74,32 @@ export default function AutoTrayRouterPage() {
   const [missingSpecTarget, setMissingSpecTarget] = useState<string | undefined>(undefined);
 
   const isMountedRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Initial Load: Check localStorage for existing projects
+  // 1. Initial Load: Check backend SQLite database for existing projects
   useEffect(() => {
-    const loadedProjects = getStoredProjects();
-    setProjects(loadedProjects);
+    let isCancelled = false;
 
-    if (loadedProjects.length === 0) {
-      // Prompt user to start with a clean project or explore demo
-      setIsInitialSetup(true);
-      setIsProjectModalOpen(true);
-    } else {
-      const activeId = getStoredActiveProjectId();
-      const match = loadedProjects.find(p => p.id === activeId) || loadedProjects[0];
-      switchActiveProject(match);
+    async function initProjects() {
+      const loaded = await fetchProjectsFromDatabase();
+      if (isCancelled) return;
+      setProjects(loaded);
+
+      if (loaded.length === 0) {
+        setIsInitialSetup(true);
+        setIsProjectModalOpen(true);
+      } else {
+        const activeId = getStoredActiveProjectId();
+        const match = loaded.find(p => p.id === activeId) || loaded[0];
+        switchActiveProject(match);
+      }
+      isMountedRef.current = true;
     }
-    isMountedRef.current = true;
+
+    initProjects();
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   const switchActiveProject = (proj: Project) => {
@@ -98,12 +109,16 @@ export default function AutoTrayRouterPage() {
     setBranches(proj.branches || []);
     setCables(proj.cables || []);
     setNodeConfigs(proj.node_fittings || {});
+    if (proj.latest_calculation) {
+      setCalculationResult(proj.latest_calculation);
+    }
   };
 
   // 2. Persist project changes whenever parameters, branches, cables, or nodeConfigs update
   useEffect(() => {
     if (!isMountedRef.current || !activeProject) return;
 
+    // Immediately cache locally
     updateStoredProject(activeProject.id, {
       parameters,
       branches,
@@ -118,6 +133,21 @@ export default function AutoTrayRouterPage() {
           : p
       )
     );
+
+    // Debounce sync to backend database (400ms)
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      updateProjectInDatabase(activeProject.id, {
+        parameters,
+        branches,
+        cables,
+        node_fittings: nodeConfigs,
+      });
+    }, 400);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
   }, [parameters, branches, cables, nodeConfigs, activeProject?.id]);
 
   // 3. Calculation Runner
@@ -131,12 +161,17 @@ export default function AutoTrayRouterPage() {
     setErrorMessage(null);
     try {
       try {
-        const res = await calculateSizingApi({
-          parameters,
-          branches,
-          cables,
-          node_fittings: nodeConfigs,
-        });
+        let res: CalculationResponse;
+        if (activeProject?.id) {
+          res = await calculateProjectInDatabase(activeProject.id);
+        } else {
+          res = await calculateSizingApi({
+            parameters,
+            branches,
+            cables,
+            node_fittings: nodeConfigs,
+          });
+        }
         setCalculationResult(res);
       } catch (backendErr) {
         // Fallback to high-performance client-side graph engine
@@ -198,25 +233,44 @@ export default function AutoTrayRouterPage() {
   };
 
   // Project Management Handlers
-  const handleCreateProject = (name: string, code: string, description: string) => {
-    const newProj = createNewProject(name, code, description, DEFAULT_PARAMETERS);
-    setProjects(getStoredProjects());
+  const handleCreateProject = async (name: string, code: string, description: string) => {
+    const newProj = await createProjectInDatabase(name, code, description, DEFAULT_PARAMETERS);
+    const loaded = await fetchProjectsFromDatabase();
+    setProjects(loaded);
     switchActiveProject(newProj);
     setIsInitialSetup(false);
     setActiveTab('branches');
   };
 
-  const handleLoadDemoProject = () => {
-    const demoProj = createDemoProject();
-    setProjects(getStoredProjects());
-    switchActiveProject(demoProj);
+  const handleLoadDemoProject = async () => {
+    const loaded = await fetchProjectsFromDatabase();
+    const demo = loaded.find(p => p.id === 'PRJ_DEMO_01');
+    if (demo) {
+      setProjects(loaded);
+      switchActiveProject(demo);
+    } else {
+      const demoProj = await createProjectInDatabase(
+        'Industrial Refinery - Multi-Level Riser',
+        'DEMO-REF-01',
+        '3-tier substation transition with 18 branches and 42 mixed power/control/data cables',
+        DEFAULT_PARAMETERS
+      );
+      await updateProjectInDatabase(demoProj.id, {
+        branches: JSON.parse(JSON.stringify(SAMPLE_BRANCHES)),
+        cables: JSON.parse(JSON.stringify(SAMPLE_CABLES)),
+      });
+      const reloaded = await fetchProjectFromDatabase(demoProj.id);
+      const updatedList = await fetchProjectsFromDatabase();
+      setProjects(updatedList);
+      if (reloaded) switchActiveProject(reloaded);
+    }
     setIsInitialSetup(false);
     setActiveTab('results');
   };
 
-  const handleDeleteProject = (id: string) => {
-    deleteStoredProject(id);
-    const remaining = getStoredProjects();
+  const handleDeleteProject = async (id: string) => {
+    await deleteProjectFromDatabase(id);
+    const remaining = await fetchProjectsFromDatabase();
     setProjects(remaining);
     if (remaining.length > 0) {
       switchActiveProject(remaining[0]);
@@ -384,9 +438,14 @@ export default function AutoTrayRouterPage() {
         isCalculating={isCalculating}
         projects={projects}
         activeProject={activeProject}
-        onSelectProject={id => {
+        onSelectProject={async id => {
+          const full = await fetchProjectFromDatabase(id);
           const match = projects.find(p => p.id === id);
-          if (match) switchActiveProject(match);
+          if (full) {
+            switchActiveProject(full);
+          } else if (match) {
+            switchActiveProject(match);
+          }
         }}
         onOpenNewProjectModal={() => {
           setIsInitialSetup(false);

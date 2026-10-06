@@ -272,17 +272,47 @@ export interface CalculationRequest {
   node_fittings?: Record<string, NodeFittingConfig>;
 }
 
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  branches_count: number;
+  cables_count: number;
+}
+
+export interface CableCatalogItem {
+  code: string;
+  category: string;
+  category_label: string;
+  voltage: string;
+  cores: number;
+  size_mm2: number;
+  conductor_type: string;
+  insulation_sheath: string;
+  standard: string;
+  designation: string;
+  od_mm: number;
+  weight_kg_km?: number | null;
+  current_air_a?: number | null;
+}
+
 export interface Project {
   id: string;
   name: string;
   code: string;
   description?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
   parameters: CalculationParameters;
   branches: Branch[];
   cables: Cable[];
   node_fittings?: Record<string, NodeFittingConfig>;
+  latest_calculation?: CalculationResponse | null;
 }
 
 export interface ColumnMappingConfig {

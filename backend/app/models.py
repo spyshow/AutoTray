@@ -338,3 +338,65 @@ class CalculationResponse(BaseModel):
     bom: Optional[BillOfMaterials] = None
     nodes: List[CalculatedNodeFitting] = []
 
+
+class CableCatalogItem(BaseModel):
+    code: str
+    category: str
+    category_label: str
+    voltage: str
+    cores: int
+    size_mm2: float
+    conductor_type: str
+    insulation_sheath: str
+    standard: str
+    designation: str
+    od_mm: float
+    weight_kg_km: Optional[float] = None
+    current_air_a: Optional[float] = None
+
+
+class ProjectCreate(BaseModel):
+    id: Optional[str] = None
+    name: str = Field(..., min_length=1)
+    code: str = Field("PRJ-001")
+    description: Optional[str] = ""
+    parameters: Optional[CalculationParameters] = None
+    branches: Optional[List[Branch]] = None
+    cables: Optional[List[Cable]] = None
+    node_fittings: Optional[Dict[str, NodeFittingConfig]] = None
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    description: Optional[str] = None
+    parameters: Optional[CalculationParameters] = None
+    branches: Optional[List[Branch]] = None
+    cables: Optional[List[Cable]] = None
+    node_fittings: Optional[Dict[str, NodeFittingConfig]] = None
+
+
+class ProjectSummary(BaseModel):
+    id: str
+    name: str
+    code: str
+    description: Optional[str] = ""
+    created_at: str
+    updated_at: str
+    branches_count: int = 0
+    cables_count: int = 0
+
+
+class ProjectDetail(BaseModel):
+    id: str
+    name: str
+    code: str
+    description: Optional[str] = ""
+    created_at: str
+    updated_at: str
+    parameters: CalculationParameters
+    branches: List[Branch] = []
+    cables: List[Cable] = []
+    node_fittings: Dict[str, NodeFittingConfig] = Field(default_factory=dict)
+    latest_calculation: Optional[CalculationResponse] = None
+

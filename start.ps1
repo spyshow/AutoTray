@@ -22,6 +22,7 @@ if (-not (Test-Path $BackendPython)) {
     python -m venv (Join-Path $ScriptDir "backend\.venv")
     & (Join-Path $ScriptDir "backend\.venv\Scripts\python.exe") -m pip install -r (Join-Path $ScriptDir "backend\requirements.txt")
 } else {
+    & (Join-Path $ScriptDir "backend\.venv\Scripts\python.exe") -m pip install -q -r (Join-Path $ScriptDir "backend\requirements.txt")
     Write-Host "      Backend environment ready." -ForegroundColor Green
 }
 

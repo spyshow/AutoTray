@@ -16,6 +16,7 @@ if not exist "backend\.venv\Scripts\python.exe" (
     echo       Installing backend requirements...
     backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 ) else (
+    backend\.venv\Scripts\python.exe -m pip install -q -r backend\requirements.txt
     echo       Backend environment ready.
 )
 

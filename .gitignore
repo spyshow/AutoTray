@@ -34,3 +34,11 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# TypeScript build cache
+*.tsbuildinfo

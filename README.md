@@ -19,6 +19,8 @@
                                           ▼
                           ┌────────────────────────────────┐
                           │     FastAPI Python Backend     │
+                          │ - SQLAlchemy 2.0 ORM & SQLite  │
+                          │ - Alembic Database Migrations  │
                           │ - NetworkX Weighted Graph      │
                           │ - Multi-Level Dijkstra Routing │
                           │ - Pydantic v2 Validation       │
@@ -27,7 +29,9 @@
 ```
 
 ### Backend (`/backend`)
-- **FastAPI**: REST endpoints for sizing computation, diagnostics, and binary report generation.
+- **FastAPI**: REST endpoints for project persistence, sizing computation, diagnostics, and binary report generation.
+- **SQLAlchemy 2.0 ORM & SQLite**: Normalized relational tables for `projects`, `branches`, `cables`, `project_parameters`, `node_fittings`, `cable_catalog`, and `calculation_results`. Swappable to PostgreSQL or MySQL via `DATABASE_URL` environment variable.
+- **Alembic**: Database migration tool for seamless schema upgrades.
 - **NetworkX**: Undirected weighted graph modeling (`G = nx.Graph()`), where branches and vertical risers represent edges with length and tray side height attributes.
 - **Pydantic v2**: High-performance validation schemas for parameters, cables, branches, and responses.
 - **OpenPyXL**: Generates formatted, multi-tab Excel workbooks with colored headers, cell borders, KPI blocks, and auto-adjusted column dimensions.

@@ -1,8 +1,139 @@
-import { Project, CalculationParameters, Branch, Cable } from './types';
+import { Project, CalculationParameters, Branch, Cable, CalculationResponse } from './types';
 import { DEFAULT_PARAMETERS, SAMPLE_BRANCHES, SAMPLE_CABLES } from './sample-data';
+import {
+  apiGetProjects,
+  apiGetProject,
+  apiCreateProject,
+  apiUpdateProject,
+  apiDeleteProject,
+  apiCalculateProject,
+} from './api';
 
 const STORAGE_KEY_PROJECTS = 'autotray_projects_v1';
 const STORAGE_KEY_ACTIVE_ID = 'autotray_active_project_id_v1';
+
+export function getStoredActiveProjectId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(STORAGE_KEY_ACTIVE_ID);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredActiveProjectId(id: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (id) {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_ID, id);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_ACTIVE_ID);
+    }
+  } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// Backend Database API Integration (Primary)
+// ---------------------------------------------------------------------------
+
+export async function fetchProjectsFromDatabase(): Promise<Project[]> {
+  try {
+    const summaries = await apiGetProjects();
+    if (!summaries || summaries.length === 0) return [];
+
+    // Fetch full details for the projects (or at least list them)
+    const fullProjects: Project[] = [];
+    for (const s of summaries) {
+      try {
+        const full = await apiGetProject(s.id);
+        fullProjects.push(full);
+      } catch (e) {
+        // Fallback to partial project from summary
+        fullProjects.push({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          description: s.description,
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+          parameters: DEFAULT_PARAMETERS,
+          branches: [],
+          cables: [],
+        });
+      }
+    }
+    return fullProjects;
+  } catch (err) {
+    console.warn('Backend database unreachable, checking local fallback:', err);
+    return getStoredProjects();
+  }
+}
+
+export async function fetchProjectFromDatabase(id: string): Promise<Project | null> {
+  try {
+    return await apiGetProject(id);
+  } catch (err) {
+    console.warn(`Failed to fetch project ${id} from database, falling back to local:`, err);
+    const local = getStoredProjects();
+    return local.find(p => p.id === id) || null;
+  }
+}
+
+export async function createProjectInDatabase(
+  name: string,
+  code: string,
+  description: string = '',
+  parameters: CalculationParameters = DEFAULT_PARAMETERS
+): Promise<Project> {
+  const payload: Partial<Project> = {
+    name: name.trim() || 'Untitled Project',
+    code: code.trim().toUpperCase() || 'PRJ-001',
+    description: description.trim(),
+    parameters: { ...parameters },
+    branches: [],
+    cables: [],
+    node_fittings: {},
+  };
+
+  try {
+    const created = await apiCreateProject(payload);
+    setStoredActiveProjectId(created.id);
+    return created;
+  } catch (err) {
+    console.warn('Backend database create failed, saving locally:', err);
+    return createNewProject(name, code, description, parameters);
+  }
+}
+
+export async function updateProjectInDatabase(
+  id: string,
+  updates: Partial<Project>
+): Promise<Project | null> {
+  try {
+    return await apiUpdateProject(id, updates);
+  } catch (err) {
+    console.warn(`Failed to update project ${id} in database, updating locally:`, err);
+    return updateStoredProject(id, updates);
+  }
+}
+
+export async function deleteProjectFromDatabase(id: string): Promise<void> {
+  try {
+    await apiDeleteProject(id);
+  } catch (err) {
+    console.warn(`Failed to delete project ${id} in database:`, err);
+  } finally {
+    deleteStoredProject(id);
+  }
+}
+
+export async function calculateProjectInDatabase(id: string): Promise<CalculationResponse> {
+  return await apiCalculateProject(id);
+}
+
+// ---------------------------------------------------------------------------
+// LocalStorage Fallbacks & Utilities
+// ---------------------------------------------------------------------------
 
 export function getStoredProjects(): Project[] {
   if (typeof window === 'undefined') return [];
@@ -26,26 +157,6 @@ export function saveStoredProjects(projects: Project[]): void {
   }
 }
 
-export function getStoredActiveProjectId(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return localStorage.getItem(STORAGE_KEY_ACTIVE_ID);
-  } catch {
-    return null;
-  }
-}
-
-export function setStoredActiveProjectId(id: string | null): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (id) {
-      localStorage.setItem(STORAGE_KEY_ACTIVE_ID, id);
-    } else {
-      localStorage.removeItem(STORAGE_KEY_ACTIVE_ID);
-    }
-  } catch {}
-}
-
 export function createNewProject(
   name: string,
   code: string,
@@ -60,8 +171,8 @@ export function createNewProject(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     parameters: { ...parameters },
-    branches: [], // Starts completely empty as requested
-    cables: [],   // Starts completely empty as requested
+    branches: [],
+    cables: [],
   };
 
   const projects = getStoredProjects();
