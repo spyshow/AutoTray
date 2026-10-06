@@ -542,4 +542,102 @@ When branches of differing widths converge at a node (e.g. Branch A = 400mm, Bra
 - **Frontend Production Build**:
   - Run `npm run build` in `frontend/`: Clean Turbopack compilation with 0 TypeScript/ESLint errors in 3.2s.
 
+---
+
+## 15. Task: APV Industrial Cable Tray Fittings Catalog & Visual Picture System
+### Goal & Scope
+Integrate the complete industrial cable tray fittings catalog from the provided APV Solid/Perforated Systems specification (Page 1 & Page 2), and add high-definition visual engineering pictures/diagrams for every fitting and reducer in the Nodes & Fittings workspace, selection menus, and Bill of Materials to maximize engineering clarity and know-how.
+
+### 1. Complete Catalog Inventory from PDF Specification
+Based on the APV Solid / Perforated Systems catalog:
+1. **Straight Cable Trays & Covers**:
+   - `Perforated Cable Tray` + `Perforated Cable Tray Cover`
+   - `Solid Cable Tray` + `Solid Cable Tray Cover`
+2. **Horizontal Junctions (Tees & Crosses)**:
+   - `Equal Tee` (Horizontal 3-Way Tee) + `Equal Tee Cover`
+   - `Half Equal Tee` (Horizontal Branch Offset Tee) + `Half Equal Tee Cover`
+   - `Crosspiece` (Horizontal 4-Way Cross) + `Crosspiece Cover`
+   - `Vertical Downward Skewed Tee` (Branch tee with vertical drop port)
+3. **Horizontal Bends (Flat Bends / Elbows)**:
+   - `90° Flat Bend` (Horizontal 90° Elbow) + `90° Flat Bend Cover`
+   - `45° Flat Bend` (Horizontal 45° Elbow) + `45° Flat Bend Cover`
+   - `Closed Bend` (Terminal closed 90° bend / End termination)
+4. **Vertical Riser Bends (Vertical Elbows & Offsets)**:
+   - `90° Inside Riser` (Upward 90° vertical bend) + `90° Inside Riser Cover`
+   - `90° Outside Riser` (Downward 90° vertical bend) + `90° Outside Riser Cover`
+   - `45° Inside Riser` (Upward 45° vertical bend) + `45° Inside Riser Cover`
+   - `45° Outside Riser` (Downward 45° vertical bend) + `45° Outside Riser Cover`
+   - `Right Downward Skewed Bend` (3D compound downward skewed offset bend)
+5. **Reducers (Width & Depth Transitions)**:
+   - `Reducer` (Concentric In-Line Width Reducer) + `Reducer Cover`
+   - `Left Reducer` (Eccentric Left Width Reducer) + `Left Reducer Cover`
+   - `Right Reducer` (Eccentric Right Width Reducer) + `Right Reducer Cover`
+   - `Height Reducer` (Step-down vertical transition in side flange height, e.g. 100mm to 60mm)
+6. **Panel & Equipment Terminations**:
+   - `Electrical Board Outlet` (Direct top-entry or bottom-entry fitting flange for electrical switchboards/cabinets)
+   - `Straight Splice Coupler` (Coupler joint plates with fasteners)
+   - `None / Pass-Through` (Unbroken continuous tray run)
+
+### 2. Implementation Steps
+
+#### Step 1: Data Model Expansion (`types.ts` & `models.py`)
+- Expand `FittingType` union in `frontend/src/lib/types.ts` and `backend/app/models.py`:
+  - `'horizontal_tee'` (Equal Tee)
+  - `'horizontal_half_tee'` (Half Equal Tee)
+  - `'horizontal_cross'` (Crosspiece / 4-Way Cross)
+  - `'horizontal_elbow_90'` (90° Flat Bend)
+  - `'horizontal_elbow_45'` (45° Flat Bend)
+  - `'vertical_inside_riser_90'` (90° Inside Riser)
+  - `'vertical_outside_riser_90'` (90° Outside Riser)
+  - `'vertical_inside_riser_45'` (45° Inside Riser)
+  - `'vertical_outside_riser_45'` (45° Outside Riser)
+  - `'vertical_downward_tee'` (Vertical Downward Skewed Tee)
+  - `'skewed_downward_bend'` (Right Downward Skewed Bend)
+  - `'electrical_board_outlet'` (Electrical Board Outlet)
+  - `'closed_bend'` (Closed Bend / End Cap)
+  - `'straight_coupler'` (Straight Splice Coupler)
+  - `'none'` (None / Pass-Through)
+- Expand `ReducerType`:
+  - `'concentric'` (Concentric Reducer)
+  - `'eccentric_left'` (Left Reducer)
+  - `'eccentric_right'` (Right Reducer)
+  - `'height_reducer'` (Height Reducer)
+- Add optional `include_covers?: boolean` in `NodeFittingConfig` and project parameters to support automated fitting cover take-off.
+
+#### Step 2: High-Quality Engineering Vector SVG Graphics Library
+- Create dedicated SVG icons/illustrations component `frontend/src/components/fitting-illustrations.tsx`:
+  - 2.5D clean engineering isometric line-and-fill art matching the APV catalog 3D render style:
+    - Silver-slate metallic finish (`#64748B`, `#94A3B8`, `#CBD5E1`, `#F1F5F9`)
+    - Distinctive side flanges, bend radii, perforated/solid texture accents, and port arrows.
+  - Component `FittingThumbnail({ type, className, size })` and `ReducerThumbnail({ type, className, size })`.
+  - Comprehensive metadata registry `FITTING_CATALOG_REGISTRY`:
+    - Code, Name, APV Catalog Title, Category (Horizontal Junction, Flat Bend, Vertical Riser, Reducer, Termination), Description, Port Count, Angles.
+
+#### Step 3: Interactive Visual Selector & Preview in Nodes & Fittings Tab
+- Replace native HTML `<select>` with a rich visual picker:
+  - Each item displays:
+    - High-res SVG thumbnail of the fitting.
+    - Fitting primary name + APV catalog designation (`Equal Tee`, `90° Flat Bend`, `90° Inside Riser`, etc.).
+    - Badge indicating junction geometry (3-Port, 4-Port, 90° Turn, Vertical Drop, etc.).
+  - Table row displays:
+    - Clickable 44×44 px thumbnail preview with quick hover zoom and tooltip.
+    - Dialog/Modal preview when clicked showing full 3D visual, nominal dimensions, port connections, and cover option.
+  - Port Reducers column:
+    - Display visual SVG thumbnail for Concentric, Left Reducer, Right Reducer, and Height Reducer next to each reduction ratio ($W_1 \rightarrow W_2$).
+
+#### Step 4: BOM & Excel Report Integration
+- In `frontend/src/components/bom-tab.tsx`:
+  - Add fitting thumbnail pictures inside the Fittings & Reducers schedule table rows.
+  - Itemize covers in the accessories/take-off table when `include_covers` is selected.
+- In `backend/app/excel_exporter.py`:
+  - Include APV standard fitting classification and cover take-off rows in the "Fittings & Reducers" worksheet.
+
+#### Step 5: Verification & Automated Tests
+- Update frontend unit tests in `frontend/src/tests/fittings.test.mjs` for all new APV fitting types.
+- Update backend unit tests in `backend/tests/test_routing_engine.py` and `backend/tests/test_excel_exporter.py`.
+- Run `npm test` in `frontend/` (ensure 100% pass).
+- Run `.\.venv\Scripts\python.exe -m pytest tests` in `backend/` (ensure 100% pass).
+- Run `npm run build` in `frontend/` (ensure 0 TypeScript/Turbopack errors).
+
+
 
