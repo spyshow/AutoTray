@@ -45,8 +45,8 @@ def seed_cable_catalog(db: Session) -> int:
 
 
 def seed_demo_project_if_empty(db: Session) -> bool:
-    """Creates default demo project if projects table is empty."""
-    if db.query(ProjectModel).count() > 0:
+    """Creates default demo project if PRJ_DEMO_01 does not exist."""
+    if db.query(ProjectModel).filter(ProjectModel.id == "PRJ_DEMO_01").first():
         return False
 
     demo_project = ProjectModel(

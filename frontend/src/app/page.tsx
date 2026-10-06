@@ -325,7 +325,11 @@ export default function AutoTrayRouterPage() {
   };
 
   const handleAddBranch = (branch: Branch) => {
-    setBranches(prev => [...prev, branch]);
+    const branchWithMounting: Branch = {
+      ...branch,
+      mounting_type: branch.mounting_type || parameters.default_mounting_type || 'ceiling_trapeze',
+    };
+    setBranches(prev => [...prev, branchWithMounting]);
     setActiveTab('branches');
   };
 
@@ -481,6 +485,7 @@ export default function AutoTrayRouterPage() {
                 branch_type: 'horizontal',
                 length_m: 10.0,
                 tray_height_mm: parameters.default_tray_height_mm,
+                mounting_type: parameters.default_mounting_type || 'ceiling_trapeze',
               });
               setActiveTab('branches');
             }}
@@ -582,6 +587,7 @@ export default function AutoTrayRouterPage() {
             <BranchesTable
               branches={branches}
               defaultTrayHeight={parameters.default_tray_height_mm}
+              defaultMountingType={parameters.default_mounting_type || 'ceiling_trapeze'}
               onUpdateBranch={handleUpdateBranch}
               onAddBranch={handleAddBranch}
               onDeleteBranch={handleDeleteBranch}

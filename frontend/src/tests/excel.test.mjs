@@ -653,6 +653,132 @@ test('mapRawDataToCables extracts source_panel and dest_panel from raw IEC tags 
   assert.equal(cables[3].dest_panel, 'P201');
 });
 
+function mapRawDataToBranches(
+  rows,
+  headerRowIndex,
+  mapping,
+  defaultTrayHeight = 60.0,
+  defaultMountingType = 'ceiling_trapeze'
+) {
+  if (rows.length <= headerRowIndex) return [];
+  const headers = rows[headerRowIndex].map(h => String(h || '').trim());
+
+  const idIdx = headers.indexOf(mapping.branchIdCol);
+  const fromIdx = headers.indexOf(mapping.branchFromCol);
+  const toIdx = headers.indexOf(mapping.branchToCol);
+  const lvlIdx = headers.indexOf(mapping.branchLevelCol);
+  const typeIdx = headers.indexOf(mapping.branchTypeCol);
+  const lenIdx = headers.indexOf(mapping.branchLengthCol);
+  const hgtIdx = headers.indexOf(mapping.branchHeightCol);
+  const mntIdx = mapping.branchMountingCol ? headers.indexOf(mapping.branchMountingCol) : -1;
+
+  const branches = [];
+
+  for (let r = headerRowIndex + 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row || row.length === 0) continue;
+
+    const id = idIdx !== -1 && row[idIdx] !== undefined ? String(row[idIdx]).trim() : '';
+    const from = fromIdx !== -1 && row[fromIdx] !== undefined ? String(row[fromIdx]).trim() : '';
+    const to = toIdx !== -1 && row[toIdx] !== undefined ? String(row[toIdx]).trim() : '';
+
+    if (!id && !from && !to) continue;
+
+    const level = lvlIdx !== -1 && row[lvlIdx] !== undefined ? String(row[lvlIdx]).trim() : 'Level 1';
+
+    let branchType = 'horizontal';
+    if (typeIdx !== -1 && row[typeIdx] !== undefined) {
+      const typeStr = String(row[typeIdx]).trim().toLowerCase();
+      if (typeStr.includes('vert') || typeStr.includes('riser')) {
+        branchType = 'vertical';
+      }
+    }
+
+    const rawLen = lenIdx !== -1 && row[lenIdx] !== undefined ? parseFloat(String(row[lenIdx])) : 10.0;
+    const length_m = isNaN(rawLen) || rawLen <= 0 ? 10.0 : rawLen;
+
+    let tray_height_mm = undefined;
+    if (hgtIdx !== -1 && row[hgtIdx] !== undefined && String(row[hgtIdx]).trim() !== '') {
+      const parsedH = parseFloat(String(row[hgtIdx]));
+      if (!isNaN(parsedH) && parsedH > 0) {
+        tray_height_mm = parsedH;
+      }
+    }
+
+    let mounting_type = defaultMountingType;
+    if (mntIdx !== -1 && row[mntIdx] !== undefined && String(row[mntIdx]).trim() !== '') {
+      const mntStr = String(row[mntIdx]).toLowerCase();
+      if (mntStr.includes('wall') || mntStr.includes('cantilever')) {
+        mounting_type = 'wall_cantilever';
+      } else if (mntStr.includes('ceil') || mntStr.includes('trapeze') || mntStr.includes('hang')) {
+        mounting_type = 'ceiling_trapeze';
+      }
+    }
+
+    branches.push({
+      branch_id: id || `BR_${r}`,
+      node_from: from || 'NODE_A',
+      node_to: to || 'NODE_B',
+      level: level || 'Level 1',
+      branch_type: branchType,
+      length_m,
+      tray_height_mm,
+      mounting_type,
+    });
+  }
+
+  return branches;
+}
+
+test('mapRawDataToBranches defaults mounting_type to configured defaultMountingType when unmapped or empty', () => {
+  const rows = [
+    ['Branch ID', 'From', 'To', 'Level', 'Type', 'Length', 'Height'],
+    ['BR_01', 'NODE_1', 'NODE_2', 'Level 1', 'horizontal', '6.0', '60'],
+    ['BR_02', 'NODE_2', 'NODE_3', 'Level 1', 'horizontal', '8.0', '60'],
+  ];
+
+  const mapping = {
+    branchIdCol: 'Branch ID',
+    branchFromCol: 'From',
+    branchToCol: 'To',
+    branchLevelCol: 'Level',
+    branchTypeCol: 'Type',
+    branchLengthCol: 'Length',
+    branchHeightCol: 'Height',
+  };
+
+  // Case 1: defaultMountingType = 'wall_cantilever'
+  const branchesWall = mapRawDataToBranches(rows, 0, mapping, 60.0, 'wall_cantilever');
+  assert.equal(branchesWall[0].mounting_type, 'wall_cantilever');
+  assert.equal(branchesWall[1].mounting_type, 'wall_cantilever');
+
+  // Case 2: defaultMountingType = 'ceiling_trapeze'
+  const branchesCeil = mapRawDataToBranches(rows, 0, mapping, 60.0, 'ceiling_trapeze');
+  assert.equal(branchesCeil[0].mounting_type, 'ceiling_trapeze');
+  assert.equal(branchesCeil[1].mounting_type, 'ceiling_trapeze');
+});
+
+test('mapRawDataToBranches respects explicit mounting column overrides while defaulting empty cells', () => {
+  const rows = [
+    ['Branch ID', 'From', 'To', 'Support Style'],
+    ['BR_01', 'NODE_1', 'NODE_2', 'Wall Cantilever'],
+    ['BR_02', 'NODE_2', 'NODE_3', 'Ceiling Trapeze'],
+    ['BR_03', 'NODE_3', 'NODE_4', ''], // empty cell -> should inherit defaultMountingType
+  ];
+
+  const mapping = {
+    branchIdCol: 'Branch ID',
+    branchFromCol: 'From',
+    branchToCol: 'To',
+    branchMountingCol: 'Support Style',
+  };
+
+  const branches = mapRawDataToBranches(rows, 0, mapping, 60.0, 'wall_cantilever');
+  assert.equal(branches[0].mounting_type, 'wall_cantilever');
+  assert.equal(branches[1].mounting_type, 'ceiling_trapeze');
+  assert.equal(branches[2].mounting_type, 'wall_cantilever');
+});
+
 
 
 

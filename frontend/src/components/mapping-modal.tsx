@@ -270,7 +270,8 @@ export function MappingModal({
         rawBranchesData,
         0,
         branchMappings,
-        defaultTrayHeight
+        defaultTrayHeight,
+        parameters?.default_mounting_type || 'ceiling_trapeze'
       );
     }
 

@@ -11,7 +11,7 @@ import {
   flexRender,
   SortingState,
 } from '@tanstack/react-table';
-import { Branch } from '@/lib/types';
+import { Branch, SupportMountingType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -119,6 +119,7 @@ function EditableCellInput({
 interface BranchesTableProps {
   branches: Branch[];
   defaultTrayHeight: number;
+  defaultMountingType?: SupportMountingType;
   onUpdateBranch: (index: number, updated: Branch) => void;
   onAddBranch: (branch: Branch) => void;
   onDeleteBranch: (index: number) => void;
@@ -129,6 +130,7 @@ interface BranchesTableProps {
 export function BranchesTable({
   branches,
   defaultTrayHeight,
+  defaultMountingType = 'ceiling_trapeze',
   onUpdateBranch,
   onAddBranch,
   onDeleteBranch,
@@ -153,6 +155,9 @@ export function BranchesTable({
 
   const defaultTrayHeightRef = useRef(defaultTrayHeight);
   defaultTrayHeightRef.current = defaultTrayHeight;
+
+  const defaultMountingTypeRef = useRef(defaultMountingType);
+  defaultMountingTypeRef.current = defaultMountingType;
 
   // Clean up selected indices when branch count shrinks
   useEffect(() => {
@@ -223,6 +228,7 @@ export function BranchesTable({
       branch_type: 'horizontal',
       length_m: 6.0,
       tray_height_mm: defaultTrayHeightRef.current,
+      mounting_type: defaultMountingTypeRef.current || 'ceiling_trapeze',
     });
   };
 
@@ -438,7 +444,8 @@ export function BranchesTable({
         accessorKey: 'mounting_type',
         header: 'Support Style',
         cell: ({ row }) => {
-          const isWall = row.original.mounting_type === 'wall_cantilever';
+          const effectiveMounting = row.original.mounting_type || defaultMountingTypeRef.current || 'ceiling_trapeze';
+          const isWall = effectiveMounting === 'wall_cantilever';
           return (
             <button
               onClick={() => {
@@ -483,8 +490,8 @@ export function BranchesTable({
         },
       },
     ],
-    // Only recompute columns when selection changes (does not recompute on typing!)
-    [selectedIndices, isAllFilteredSelected, isSomeFilteredSelected]
+    // Only recompute columns when selection changes or default mounting changes
+    [selectedIndices, isAllFilteredSelected, isSomeFilteredSelected, defaultMountingType]
   );
 
   const table = useReactTable({

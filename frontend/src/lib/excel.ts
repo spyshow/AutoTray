@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Cable, Branch, CableCategory } from './types';
+import { Cable, Branch, CableCategory, SupportMountingType } from './types';
 import { lookupCatalogCableOd } from './cable-catalog';
 
 export interface ParsedWorkbook {
@@ -454,7 +454,8 @@ export function mapRawDataToBranches(
     branchMountingCol?: string;
     branchWeightOverrideCol?: string;
   },
-  defaultTrayHeight: number = 60.0
+  defaultTrayHeight: number = 60.0,
+  defaultMountingType: SupportMountingType = 'ceiling_trapeze'
 ): Branch[] {
   if (rows.length <= headerRowIndex) return [];
   const headers = rows[headerRowIndex].map(h => String(h || '').trim());
@@ -502,8 +503,8 @@ export function mapRawDataToBranches(
       }
     }
 
-    let mounting_type: 'ceiling_trapeze' | 'wall_cantilever' | undefined = undefined;
-    if (mntIdx !== -1 && row[mntIdx] !== undefined) {
+    let mounting_type: SupportMountingType = defaultMountingType;
+    if (mntIdx !== -1 && row[mntIdx] !== undefined && String(row[mntIdx]).trim() !== '') {
       const mntStr = String(row[mntIdx]).toLowerCase();
       if (mntStr.includes('wall') || mntStr.includes('cantilever')) {
         mounting_type = 'wall_cantilever';
