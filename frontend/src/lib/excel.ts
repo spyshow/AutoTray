@@ -136,6 +136,11 @@ export function autoDetectCablesMapping(headers: string[]) {
   const countHeaders = headers.filter(h => h !== cableCoresCol && h !== cableSizeCol && h !== cableTypeCol);
   const cableCountCol = findBestHeaderMatch(countHeaders, ['parallel runs', 'runs', 'parallel', 'parallel cables', 'runs qty', 'no of cables', 'quantity', 'qty', 'count']);
 
+  const cableWeightCol = findBestHeaderMatch(headers, [
+    'cable weight', 'weight (kg/m)', 'weight (kg/km)', 'weight kg/m', 'weight kg/km',
+    'weight_kg_m', 'weight_kg_km', 'weight', 'wt (kg/m)', 'wt kg/m', 'wt', 'kg/m', 'kg/km'
+  ]);
+
   return {
     cableTagCol,
     cableSourceCol,
@@ -147,6 +152,7 @@ export function autoDetectCablesMapping(headers: string[]) {
     cableSizeCol,
     cableOdCol,
     cableCountCol,
+    cableWeightCol,
   };
 }
 
@@ -159,6 +165,8 @@ export function autoDetectBranchesMapping(headers: string[]) {
     branchTypeCol: findBestHeaderMatch(headers, ['orientation', 'branch type', 'type', 'horizontal/vertical', 'kind', 'direction']),
     branchLengthCol: findBestHeaderMatch(headers, ['length (m)', 'length_m', 'length', 'distance (m)', 'distance', 'span']),
     branchHeightCol: findBestHeaderMatch(headers, ['tray height (mm)', 'tray height', 'height (mm)', 'height', 'depth', 'side height', 'tray_height_mm']),
+    branchMountingCol: findBestHeaderMatch(headers, ['mounting', 'mounting type', 'support type', 'support mounting', 'fixing', 'installation method']),
+    branchWeightOverrideCol: findBestHeaderMatch(headers, ['weight override', 'load override', 'weight (kg/m)', 'load (kg/m)', 'override_kg_m']),
   };
 }
 
@@ -238,6 +246,7 @@ export function mapRawDataToCables(
     cableSizeCol?: string;
     cableSourcePanelCol?: string;
     cableDestPanelCol?: string;
+    cableWeightCol?: string;
   },
   typeCategoryMap: Record<string, CableCategory> = {},
   defaultOdMap?: {
@@ -266,6 +275,7 @@ export function mapRawDataToCables(
   const sizeIdx = mapping.cableSizeCol ? headers.indexOf(mapping.cableSizeCol) : -1;
   const odIdx = mapping.cableOdCol ? headers.indexOf(mapping.cableOdCol) : -1;
   const countIdx = mapping.cableCountCol ? headers.indexOf(mapping.cableCountCol) : -1;
+  const weightIdx = mapping.cableWeightCol ? headers.indexOf(mapping.cableWeightCol) : -1;
 
   const cables: Cable[] = [];
 
@@ -396,6 +406,22 @@ export function mapRawDataToCables(
       }
     }
 
+    let weight_kg_m: number | undefined = undefined;
+    let weight_kg_km: number | undefined = undefined;
+    if (weightIdx !== -1 && row[weightIdx] !== undefined && String(row[weightIdx]).trim() !== '') {
+      const parsedWt = parseFloat(String(row[weightIdx]).replace(/,/g, '.'));
+      if (!isNaN(parsedWt) && parsedWt > 0) {
+        const hName = (mapping.cableWeightCol || '').toLowerCase();
+        if (hName.includes('km') || parsedWt > 50.0) {
+          weight_kg_km = parsedWt;
+          weight_kg_m = Math.round((parsedWt / 1000.0) * 1000) / 1000;
+        } else {
+          weight_kg_m = parsedWt;
+          weight_kg_km = Math.round(parsedWt * 1000.0 * 10) / 10;
+        }
+      }
+    }
+
     cables.push({
       cable_tag: tag || `CABLE_${r}`,
       source_node: src || 'UNASSIGNED_SRC',
@@ -406,6 +432,8 @@ export function mapRawDataToCables(
       category: normalizedType,
       source_panel: resolvedSrcPanel || undefined,
       dest_panel: resolvedDstPanel || undefined,
+      weight_kg_m,
+      weight_kg_km,
     });
   }
 
@@ -423,6 +451,8 @@ export function mapRawDataToBranches(
     branchTypeCol: string;
     branchLengthCol: string;
     branchHeightCol: string;
+    branchMountingCol?: string;
+    branchWeightOverrideCol?: string;
   },
   defaultTrayHeight: number = 60.0
 ): Branch[] {
@@ -436,6 +466,8 @@ export function mapRawDataToBranches(
   const typeIdx = headers.indexOf(mapping.branchTypeCol);
   const lenIdx = headers.indexOf(mapping.branchLengthCol);
   const hgtIdx = headers.indexOf(mapping.branchHeightCol);
+  const mntIdx = mapping.branchMountingCol ? headers.indexOf(mapping.branchMountingCol) : -1;
+  const wtOvrIdx = mapping.branchWeightOverrideCol ? headers.indexOf(mapping.branchWeightOverrideCol) : -1;
 
   const branches: Branch[] = [];
 
@@ -470,6 +502,24 @@ export function mapRawDataToBranches(
       }
     }
 
+    let mounting_type: 'ceiling_trapeze' | 'wall_cantilever' | undefined = undefined;
+    if (mntIdx !== -1 && row[mntIdx] !== undefined) {
+      const mntStr = String(row[mntIdx]).toLowerCase();
+      if (mntStr.includes('wall') || mntStr.includes('cantilever')) {
+        mounting_type = 'wall_cantilever';
+      } else if (mntStr.includes('ceil') || mntStr.includes('trapeze') || mntStr.includes('hang')) {
+        mounting_type = 'ceiling_trapeze';
+      }
+    }
+
+    let weight_override_kg_m: number | undefined = undefined;
+    if (wtOvrIdx !== -1 && row[wtOvrIdx] !== undefined && String(row[wtOvrIdx]).trim() !== '') {
+      const parsedOvr = parseFloat(String(row[wtOvrIdx]).replace(/,/g, '.'));
+      if (!isNaN(parsedOvr) && parsedOvr > 0) {
+        weight_override_kg_m = parsedOvr;
+      }
+    }
+
     branches.push({
       branch_id: id || `BR_${r}`,
       node_from: from || 'NODE_A',
@@ -478,6 +528,8 @@ export function mapRawDataToBranches(
       branch_type: branchType,
       length_m,
       tray_height_mm,
+      mounting_type,
+      weight_override_kg_m,
     });
   }
 

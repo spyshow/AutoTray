@@ -435,6 +435,34 @@ export function BranchesTable({
         },
       },
       {
+        accessorKey: 'mounting_type',
+        header: 'Support Style',
+        cell: ({ row }) => {
+          const isWall = row.original.mounting_type === 'wall_cantilever';
+          return (
+            <button
+              onClick={() => {
+                const idx = branchesRef.current.indexOf(row.original);
+                if (idx !== -1) {
+                  onUpdateBranchRef.current(idx, {
+                    ...row.original,
+                    mounting_type: isWall ? 'ceiling_trapeze' : 'wall_cantilever',
+                  });
+                }
+              }}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold cursor-pointer border transition ${
+                isWall
+                  ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200'
+                  : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200'
+              }`}
+              title="Click to toggle Ceiling Trapeze / Wall Cantilever support"
+            >
+              {isWall ? 'Wall Cantilever' : 'Ceiling Trapeze'}
+            </button>
+          );
+        },
+      },
+      {
         id: 'actions',
         header: '',
         cell: ({ row }) => {

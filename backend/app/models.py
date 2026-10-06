@@ -107,6 +107,9 @@ class CalculationParameters(BaseModel):
     custom_od_by_type: Dict[str, float] = Field(default_factory=dict, description="Custom cable type to default OD mapping")
     single_core_power_formation: str = Field("trefoil", description="Installation method for 1-core power cables: 'trefoil', 'flat_touching', or 'flat_spaced'")
     control_cable_laying_method: str = Field("multi_layer", description="Installation method for control/signal/data cables: 'multi_layer' (stacked by area) or 'single_layer' (flat touching, width = OD)")
+    structural_safety_margin_pct: float = Field(15.0, ge=0.0, le=100.0, description="Structural safety load margin (e.g. 15%)")
+    tray_sheet_thickness_mm: float = Field(1.5, ge=0.5, le=5.0, description="Cable tray sheet steel thickness in mm")
+    default_mounting_type: str = Field("ceiling_trapeze", description="Default support mounting style: ceiling_trapeze or wall_cantilever")
 
 
 class Branch(BaseModel):
@@ -117,6 +120,8 @@ class Branch(BaseModel):
     branch_type: str = Field("horizontal", description="Orientation: horizontal or vertical (riser)", validation_alias=AliasChoices("branch_type", "type", "orientation"))
     length_m: float = Field(..., gt=0.0, description="Tray segment length in meters", validation_alias=AliasChoices("length_m", "length", "distance_m", "distance"))
     tray_height_mm: Optional[float] = Field(None, description="Tray side height in mm (defaults to global setting)", validation_alias=AliasChoices("tray_height_mm", "height_mm", "tray_height", "height"))
+    mounting_type: Optional[str] = Field(None, description="Support mounting style: ceiling_trapeze or wall_cantilever", validation_alias=AliasChoices("mounting_type", "mounting", "support_type"))
+    weight_override_kg_m: Optional[float] = Field(None, description="Optional manual override for branch linear weight", validation_alias=AliasChoices("weight_override_kg_m", "weight_override"))
 
     @field_validator("node_from", "node_to", mode="before")
     @classmethod
@@ -154,6 +159,8 @@ class Cable(BaseModel):
     formation: Optional[str] = Field(None, description="Installation method for 1-core power: 'trefoil', 'flat_touching', 'flat_spaced'", validation_alias=AliasChoices("formation", "installation_method", "layout"))
     source_panel: Optional[str] = Field(None, description="Owning or source panel for field devices", validation_alias=AliasChoices("source_panel", "src_panel", "from_panel"))
     dest_panel: Optional[str] = Field(None, description="Owning or destination panel for field devices", validation_alias=AliasChoices("dest_panel", "dst_panel", "to_panel"))
+    weight_kg_km: Optional[float] = Field(None, description="Cable weight in kg/km", validation_alias=AliasChoices("weight_kg_km", "weight_km", "wt_km"))
+    weight_kg_m: Optional[float] = Field(None, description="Cable weight in kg/m", validation_alias=AliasChoices("weight_kg_m", "weight", "weight_m", "wt_m"))
 
     @field_validator("source_node", "dest_node", "cable_tag", mode="before")
     @classmethod
@@ -195,6 +202,8 @@ class CableRoutedDetail(BaseModel):
     formation: Optional[str] = None
     source_panel: Optional[str] = None
     dest_panel: Optional[str] = None
+    weight_kg_m: float = 0.0
+    total_weight_kg: float = 0.0
 
 
 class BranchSizingResult(BaseModel):
@@ -220,6 +229,13 @@ class BranchSizingResult(BaseModel):
     cables_detail: List[CableRoutedDetail] = []
     status: str
     warnings: List[str] = Field(default_factory=list)
+    cable_load_kg_m: float = 0.0
+    tray_dead_load_kg_m: float = 0.0
+    total_load_kg_m: float = 0.0
+    recommended_support_span_m: float = 2.0
+    supports_count: int = 0
+    support_mounting_type: str = "ceiling_trapeze"
+    load_utilization_pct: float = 0.0
 
 
 class CableRoutingResult(BaseModel):
@@ -308,6 +324,10 @@ class BillOfMaterials(BaseModel):
     total_cable_length_m: float = 0.0
     total_fittings_count: int = 0
     total_reducers_count: int = 0
+    total_cable_weight_kg: float = 0.0
+    total_tray_weight_kg: float = 0.0
+    total_installation_weight_kg: float = 0.0
+    total_supports_count: int = 0
 
 
 class CalculationResponse(BaseModel):

@@ -411,6 +411,80 @@ export function DefaultsSettingsTab({
               </div>
             </div>
 
+            {/* Structural Safety Margin */}
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <Sliders className="h-3.5 w-3.5 text-blue-600" />
+                  Structural Safety Margin:
+                </span>
+                <span className="font-mono text-blue-600 font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {parameters.structural_safety_margin_pct ?? 15}%
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Extra loading safety allowance above rated routed cable weight (IEC 61537 / NEMA VE 1).
+              </p>
+              <Slider
+                min={0}
+                max={40}
+                step={5}
+                value={[parameters.structural_safety_margin_pct ?? 15]}
+                onValueChange={([val]) =>
+                  onChangeParameters({ ...parameters, structural_safety_margin_pct: val })
+                }
+                className="py-1"
+              />
+            </div>
+
+            {/* Tray Sheet Steel Thickness & Default Mounting */}
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-xs text-slate-700 block">
+                  Sheet Metal Thickness:
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-800">
+                  {parameters.tray_sheet_thickness_mm ?? 1.5} mm
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                {[1.0, 1.2, 1.5, 2.0].map(thk => (
+                  <button
+                    key={thk}
+                    onClick={() =>
+                      onChangeParameters({ ...parameters, tray_sheet_thickness_mm: thk })
+                    }
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition cursor-pointer ${
+                      (parameters.tray_sheet_thickness_mm ?? 1.5) === thk
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {thk} mm
+                  </button>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700">Default Support:</span>
+                <button
+                  onClick={() =>
+                    onChangeParameters({
+                      ...parameters,
+                      default_mounting_type:
+                        (parameters.default_mounting_type ?? 'ceiling_trapeze') === 'ceiling_trapeze'
+                          ? 'wall_cantilever'
+                          : 'ceiling_trapeze',
+                    })
+                  }
+                  className="px-2 py-0.5 rounded text-[11px] font-medium bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 cursor-pointer shadow-2xs"
+                >
+                  {(parameters.default_mounting_type ?? 'ceiling_trapeze') === 'ceiling_trapeze'
+                    ? 'Ceiling Trapeze'
+                    : 'Wall Cantilever'}
+                </button>
+              </div>
+            </div>
+
             {/* Metallic Divider Toggle */}
             <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between space-y-2">
               <div className="flex items-center justify-between">

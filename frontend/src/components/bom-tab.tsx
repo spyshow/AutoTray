@@ -17,6 +17,7 @@ import {
   Package,
   GitBranch,
   ArrowRightLeft,
+  Scale,
 } from 'lucide-react';
 import { FittingIllustration, ReducerIllustration } from '@/components/fitting-illustrations';
 
@@ -144,6 +145,49 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
           </CardContent>
         </Card>
       </div>
+
+      {/* Structural Weight & Supports Summary Strip */}
+      {(bom.total_installation_weight_kg !== undefined && bom.total_installation_weight_kg > 0) && (
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/50 rounded-xl p-4 text-white shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-indigo-800/40">
+            <div className="flex items-center gap-2">
+              <Scale className="w-4 h-4 text-indigo-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wide text-indigo-200">
+                Structural Loading &amp; Support Take-Off (IEC 61537 / NEMA VE 1)
+              </h3>
+            </div>
+            <Badge variant="outline" className="text-[10px] bg-indigo-950/80 text-indigo-300 border-indigo-700/60">
+              15% Safety Margin Included
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Total Cable Weight</p>
+              <p className="text-xl font-black text-white mt-0.5">
+                {bom.total_cable_weight_kg?.toLocaleString() ?? 0} <span className="text-xs font-medium text-slate-400">kg</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Tray Steel Dead Weight</p>
+              <p className="text-xl font-black text-indigo-300 mt-0.5">
+                {bom.total_tray_weight_kg?.toLocaleString() ?? 0} <span className="text-xs font-medium text-slate-400">kg</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Total Installation Weight</p>
+              <p className="text-xl font-black text-emerald-400 mt-0.5">
+                {bom.total_installation_weight_kg?.toLocaleString() ?? 0} <span className="text-xs font-medium text-slate-400">kg</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Total Required Supports</p>
+              <p className="text-xl font-black text-amber-300 mt-0.5">
+                {bom.total_supports_count ?? 0} <span className="text-xs font-medium text-slate-400">locations</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 1: Cable Tray & Riser Schedule */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

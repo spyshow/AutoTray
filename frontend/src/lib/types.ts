@@ -69,6 +69,8 @@ export interface CalculatedNodeFitting {
   notes?: string;
 }
 
+export type SupportMountingType = 'ceiling_trapeze' | 'wall_cantilever';
+
 export interface CalculationParameters {
   spare_margin_pct: number;
   control_fill_pct: number;
@@ -83,6 +85,9 @@ export interface CalculationParameters {
   custom_od_by_type?: Record<string, number>;
   single_core_power_formation?: CableFormation;
   control_cable_laying_method?: 'multi_layer' | 'single_layer';
+  structural_safety_margin_pct?: number;
+  tray_sheet_thickness_mm?: number;
+  default_mounting_type?: SupportMountingType;
 }
 
 export interface Branch {
@@ -93,6 +98,8 @@ export interface Branch {
   branch_type: BranchOrientation;
   length_m: number;
   tray_height_mm?: number;
+  mounting_type?: SupportMountingType;
+  weight_override_kg_m?: number;
 }
 
 export interface Cable {
@@ -106,6 +113,8 @@ export interface Cable {
   formation?: CableFormation;
   source_panel?: string;
   dest_panel?: string;
+  weight_kg_km?: number;
+  weight_kg_m?: number;
 }
 
 export interface CableRoutedDetail {
@@ -119,6 +128,8 @@ export interface CableRoutedDetail {
   formation?: CableFormation;
   source_panel?: string;
   dest_panel?: string;
+  weight_kg_m?: number;
+  total_weight_kg?: number;
 }
 
 export interface BranchSizingResult {
@@ -144,6 +155,13 @@ export interface BranchSizingResult {
   cables_detail?: CableRoutedDetail[];
   status: 'OK' | 'OVERFILL_SPLIT_TIER' | 'EMPTY' | string;
   warnings?: string[];
+  cable_load_kg_m?: number;
+  tray_dead_load_kg_m?: number;
+  total_load_kg_m?: number;
+  recommended_support_span_m?: number;
+  supports_count?: number;
+  support_mounting_type?: SupportMountingType;
+  load_utilization_pct?: number;
 }
 
 export interface CableRoutingResult {
@@ -232,6 +250,10 @@ export interface BillOfMaterials {
   total_cable_length_m: number;
   total_fittings_count?: number;
   total_reducers_count?: number;
+  total_cable_weight_kg?: number;
+  total_tray_weight_kg?: number;
+  total_installation_weight_kg?: number;
+  total_supports_count?: number;
 }
 
 export interface CalculationResponse {

@@ -18,6 +18,13 @@ import {
 } from './types';
 import { lookupCatalogCableOd } from './cable-catalog';
 import { calculateNetworkNodeFittings, generateFittingsAndReducersBom } from './fittings-engine';
+import {
+  resolveCableWeightKgM,
+  calculateTrayDeadLoadKgM,
+  calculateOptimalSupportSpan,
+  calculateBranchSupportsCount,
+  generateStructuralSupportAccessories,
+} from './structural-engine';
 
 export const STANDARD_COMMERCIAL_WIDTHS = [50, 75, 100, 150, 200, 300, 400, 450, 500, 600, 700];
 
@@ -501,6 +508,8 @@ export function solveRoutingAndSizingClient(
           formationVal = undefined;
         }
       }
+      const cWtM = resolveCableWeightKgM(c);
+      const cTotWt = Math.round(cWtM * b.length_m * c.count * 100) / 100;
       return {
         cable_tag: c.cable_tag,
         source_node: c.source_node,
@@ -512,6 +521,8 @@ export function solveRoutingAndSizingClient(
         formation: formationVal,
         source_panel: c.source_panel,
         dest_panel: c.dest_panel,
+        weight_kg_m: Number(cWtM.toFixed(3)),
+        total_weight_kg: cTotWt,
       };
     });
 
@@ -548,6 +559,24 @@ export function solveRoutingAndSizingClient(
     // Deduplicated list of cables routed
     const uniqueCablesRouted = Array.from(new Set(routedList.map(c => c.cable_tag)));
 
+    // Structural Loading & Support Span Calculation
+    const cableLoadKgM = b.weight_override_kg_m !== undefined && b.weight_override_kg_m > 0
+      ? Number(b.weight_override_kg_m)
+      : Number(routedList.reduce((sum, c) => sum + resolveCableWeightKgM(c) * c.count, 0).toFixed(2));
+
+    const safetyMargin = (parameters.structural_safety_margin_pct ?? 15.0) / 100.0;
+    const sheetThk = parameters.tray_sheet_thickness_mm ?? 1.5;
+    const hasCover = Boolean(nodeConfigs && (
+      nodeConfigs[b.node_from]?.include_cover || nodeConfigs[b.node_to]?.include_cover
+    ));
+    const trayDeadLoadKgM = calculateTrayDeadLoadKgM(recWidth, trayH, sheetThk, hasCover);
+    const totalDesignLoadKgM = Number(((cableLoadKgM * (1.0 + safetyMargin)) + trayDeadLoadKgM).toFixed(2));
+
+    const spanRating = calculateOptimalSupportSpan(totalDesignLoadKgM, trayH);
+    const nearFittingCount = ((adj.get(b.node_from)?.length || 0) >= 2 ? 1 : 0) + ((adj.get(b.node_to)?.length || 0) >= 2 ? 1 : 0);
+    const suppCount = calculateBranchSupportsCount(b.length_m, spanRating.span_m, nearFittingCount > 0 ? 1 : 0);
+    const mType = b.mounting_type || parameters.default_mounting_type || 'ceiling_trapeze';
+
     branchResults.push({
       branch_id: b.branch_id,
       node_from: b.node_from,
@@ -571,6 +600,13 @@ export function solveRoutingAndSizingClient(
       cables_detail: cablesDetail,
       status,
       warnings: branchWarnings,
+      cable_load_kg_m: cableLoadKgM,
+      tray_dead_load_kg_m: trayDeadLoadKgM,
+      total_load_kg_m: totalDesignLoadKgM,
+      recommended_support_span_m: spanRating.span_m,
+      supports_count: suppCount,
+      support_mounting_type: mType,
+      load_utilization_pct: spanRating.utilization_pct,
     });
   });
 
@@ -698,7 +734,6 @@ export function generateBillOfMaterialsClient(
   const totalConnectionJoints = branches.length > 0 ? Math.max(branches.length, totalJoints + branches.length) : 0;
   const couplerQty = totalConnectionJoints * 2;
   const hardwareBoltsQty = couplerQty * 4;
-  const supportQty = branches.reduce((sum, b) => sum + Math.max(1, Math.ceil(b.length_m / 1.5)), 0);
 
   const accessories: AccessoryBomItem[] = [
     {
@@ -715,14 +750,11 @@ export function generateBillOfMaterialsClient(
       quantity: hardwareBoltsQty,
       unit: 'sets',
     },
-    {
-      item_name: 'Trapeze Hanger Supports / Cantilever Brackets',
-      category: 'Support',
-      description: 'Structural heavy-duty ceiling/wall support assemblies spaced @ 1.5m intervals',
-      quantity: supportQty,
-      unit: 'pcs',
-    },
   ];
+
+  // Sized support hardware (Ceiling Trapeze Hangers / Cantilever Wall Brackets)
+  const supportAccessories = generateStructuralSupportAccessories(branches);
+  accessories.push(...supportAccessories);
 
   if (parameters.add_metallic_divider && branches.length > 0) {
     const dividerLen = branches.reduce((sum, b) => {
@@ -772,6 +804,18 @@ export function generateBillOfMaterialsClient(
   const totalFittingsCount = fittings.reduce((sum, f) => sum + f.quantity, 0);
   const totalReducersCount = reducers.reduce((sum, r) => sum + r.quantity, 0);
 
+  const totalCableWeightKg = Number(
+    cables
+      .filter(c => c.status === 'ROUTED')
+      .reduce((sum, c) => sum + resolveCableWeightKgM(c) * c.total_length_m * c.count, 0)
+      .toFixed(2)
+  );
+  const totalTrayWeightKg = Number(
+    branches.reduce((sum, b) => sum + (b.tray_dead_load_kg_m ?? 0) * b.length_m, 0).toFixed(2)
+  );
+  const totalInstallationWeightKg = Number((totalCableWeightKg + totalTrayWeightKg).toFixed(2));
+  const totalSupportsCount = branches.reduce((sum, b) => sum + (b.supports_count ?? 0), 0);
+
   return {
     trays: trayItems,
     accessories,
@@ -783,5 +827,9 @@ export function generateBillOfMaterialsClient(
     total_cable_length_m: Number(totalCableLen.toFixed(2)),
     total_fittings_count: totalFittingsCount,
     total_reducers_count: totalReducersCount,
+    total_cable_weight_kg: totalCableWeightKg,
+    total_tray_weight_kg: totalTrayWeightKg,
+    total_installation_weight_kg: totalInstallationWeightKg,
+    total_supports_count: totalSupportsCount,
   };
 }

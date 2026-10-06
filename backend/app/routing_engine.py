@@ -1,6 +1,6 @@
 import math
 import re
-from typing import List, Dict, Tuple, Set, Optional
+from typing import List, Dict, Tuple, Set, Optional, Any
 import networkx as nx
 
 from .models import (
@@ -27,7 +27,7 @@ from .models import (
     FittingType,
     ReducerType,
 )
-from .cable_catalog import lookup_catalog_cable_od
+from .cable_catalog import lookup_catalog_cable_od, lookup_catalog_cable_weight_kg_km
 
 FITTING_TYPE_NAMES = {
     "horizontal_tee": "Equal Tee (Horizontal Tee)",
@@ -49,6 +49,95 @@ FITTING_TYPE_NAMES = {
 }
 
 STANDARD_COMMERCIAL_WIDTHS = [50, 75, 100, 150, 200, 300, 400, 450, 500, 600, 700]
+
+# Standard IEC 61537 / NEMA VE 1 Safe Working Load (SWL) curves for industrial cable trays
+LOAD_SPAN_CURVES: Dict[int, List[Dict[str, float]]] = {
+    60: [
+        {"span_m": 3.0, "allowable_kg_m": 40.0},
+        {"span_m": 2.5, "allowable_kg_m": 75.0},
+        {"span_m": 2.0, "allowable_kg_m": 125.0},
+        {"span_m": 1.5, "allowable_kg_m": 220.0},
+    ],
+    100: [
+        {"span_m": 3.0, "allowable_kg_m": 65.0},
+        {"span_m": 2.5, "allowable_kg_m": 110.0},
+        {"span_m": 2.0, "allowable_kg_m": 180.0},
+        {"span_m": 1.5, "allowable_kg_m": 320.0},
+    ],
+}
+
+
+def resolve_cable_weight_kg_m(cable: Any, eff_od: float = 15.0) -> float:
+    """Resolve linear cable weight (kg/m) via multi-tier lookup (explicit, catalog, empirical density)."""
+    explicit_m = getattr(cable, "weight_kg_m", None)
+    if explicit_m is not None and explicit_m > 0:
+        return float(explicit_m)
+    explicit_km = getattr(cable, "weight_kg_km", None)
+    if explicit_km is not None and explicit_km > 0:
+        return float(explicit_km) / 1000.0
+
+    c_type = str(getattr(cable, "cable_type", "") or "")
+    cat_wt = lookup_catalog_cable_weight_kg_km(c_type)
+    if cat_wt is not None and cat_wt > 0:
+        return float(cat_wt) / 1000.0
+
+    od = eff_od if eff_od > 0 else 15.0
+    cat = (getattr(cable, "category", None) or "").lower()
+    density = 0.0022
+    if "ctrl" in cat or "control" in cat:
+        density = 0.0018
+    elif "sig" in cat or "data" in cat or "bus" in cat:
+        density = 0.0014
+
+    est = round(od * od * density, 3)
+    return max(est, 0.05)
+
+
+def calculate_tray_dead_load_kg_m(
+    width_mm: int,
+    height_mm: float = 60.0,
+    thickness_mm: float = 1.5,
+    has_cover: bool = False,
+) -> float:
+    """Calculate tray steel dead load per meter (kg/m) factoring thickness and optional cover."""
+    steel_density = 7850.0
+    t = max(thickness_mm, 0.8) * 1e-3
+    perimeter_m = (width_mm + 2 * height_mm + 30) * 1e-3
+    tray_body_kg_m = perimeter_m * t * steel_density * 0.85
+    cover_kg_m = 0.0
+    if has_cover:
+        cover_perimeter_m = (width_mm + 30) * 1e-3
+        cover_thickness_m = 1.2 * 1e-3
+        cover_kg_m = cover_perimeter_m * cover_thickness_m * steel_density
+    return round(tray_body_kg_m + cover_kg_m, 2)
+
+
+def calculate_optimal_support_span(
+    total_load_kg_m: float,
+    tray_height_mm: float = 60.0,
+) -> Tuple[float, float, float]:
+    """Evaluate IEC 61537 / NEMA VE 1 curve to determine maximum safe support span (m)."""
+    curve_key = 100 if tray_height_mm >= 90 else 60
+    curve = LOAD_SPAN_CURVES[curve_key]
+    for entry in curve:
+        if total_load_kg_m <= entry["allowable_kg_m"]:
+            util = round((total_load_kg_m / entry["allowable_kg_m"]) * 100.0, 1)
+            return entry["span_m"], entry["allowable_kg_m"], util
+    min_entry = curve[-1]
+    util = round((total_load_kg_m / min_entry["allowable_kg_m"]) * 100.0, 1)
+    return min_entry["span_m"], min_entry["allowable_kg_m"], util
+
+
+def calculate_branch_supports_count(
+    length_m: float,
+    span_m: float,
+    near_fitting_count: int = 0,
+) -> int:
+    """NEMA VE-2 support counting: linear interval spans + dedicated fitting proximity supports."""
+    if length_m <= 0:
+        return 0
+    linear = max(1, math.ceil(length_m / span_m))
+    return linear + near_fitting_count
 
 
 def get_effective_cable_od(cable: Cable, parameters: CalculationParameters) -> float:
@@ -643,6 +732,8 @@ def solve_routing_and_sizing(
                     c_area = (math.pi * (eff_od**2) / 4.0) * c.count
                     w_contrib = (c_area / (tray_h * ctrl_fill_fraction)) * spare_factor
                     c_form_val = None
+            c_wt_m = resolve_cable_weight_kg_m(c, eff_od)
+            c_tot_wt = round(c_wt_m * b.length_m * c.count, 2)
             cables_detail.append(
                 CableRoutedDetail(
                     cable_tag=c.cable_tag,
@@ -655,6 +746,8 @@ def solve_routing_and_sizing(
                     formation=c_form_val,
                     source_panel=c.source_panel,
                     dest_panel=c.dest_panel,
+                    weight_kg_m=round(c_wt_m, 3),
+                    total_weight_kg=c_tot_wt,
                 )
             )
 
@@ -690,6 +783,25 @@ def solve_routing_and_sizing(
         # Unique routed cable tags preserving order
         unique_cables_routed = list(dict.fromkeys(c.cable_tag for c in routed_c_list))
 
+        # Structural Loading & Support Span Calculation
+        cable_load_kg_m = round(sum(resolve_cable_weight_kg_m(c, get_effective_cable_od(c, parameters)) * c.count for c in routed_c_list), 2)
+        if b.weight_override_kg_m is not None and b.weight_override_kg_m > 0:
+            cable_load_kg_m = float(b.weight_override_kg_m)
+
+        safety_margin = getattr(parameters, "structural_safety_margin_pct", 15.0) / 100.0
+        sheet_thk = getattr(parameters, "tray_sheet_thickness_mm", 1.5)
+        has_cover = bool(node_fittings and any(
+            (nf.include_cover for nid, nf in node_fittings.items() if nid in (b.node_from, b.node_to))
+        ))
+        tray_dead_load = calculate_tray_dead_load_kg_m(rec_width, tray_h, sheet_thk, has_cover)
+        total_design_load = round((cable_load_kg_m * (1.0 + safety_margin)) + tray_dead_load, 2)
+
+        span_m, allowable_swl, load_util = calculate_optimal_support_span(total_design_load, tray_h)
+        near_fittings = (1 if G.degree(b.node_from) >= 2 else 0) + (1 if G.degree(b.node_to) >= 2 else 0)
+        near_fitting_allowance = 1 if near_fittings > 0 else 0
+        supp_count = calculate_branch_supports_count(b.length_m, span_m, near_fitting_allowance)
+        m_type = b.mounting_type or getattr(parameters, "default_mounting_type", "ceiling_trapeze") or "ceiling_trapeze"
+
         branch_results.append(
             BranchSizingResult(
                 branch_id=b.branch_id,
@@ -714,6 +826,13 @@ def solve_routing_and_sizing(
                 cables_detail=cables_detail,
                 status=status,
                 warnings=branch_warnings,
+                cable_load_kg_m=cable_load_kg_m,
+                tray_dead_load_kg_m=tray_dead_load,
+                total_load_kg_m=total_design_load,
+                recommended_support_span_m=span_m,
+                supports_count=supp_count,
+                support_mounting_type=m_type,
+                load_utilization_pct=load_util,
             )
         )
 
@@ -817,8 +936,6 @@ def generate_bill_of_materials(
     total_connection_joints = max(len(branches), total_joints + len(branches)) if branches else 0
     coupler_qty = total_connection_joints * 2
     hardware_bolts_qty = coupler_qty * 4
-    support_qty = sum(max(1, math.ceil(b.length_m / 1.5)) for b in branches) if branches else 0
-
     accessories: List[AccessoryBomItem] = [
         AccessoryBomItem(
             item_name="Straight Splice Coupler Plates",
@@ -834,14 +951,33 @@ def generate_bill_of_materials(
             quantity=hardware_bolts_qty,
             unit="sets",
         ),
-        AccessoryBomItem(
-            item_name="Trapeze Hanger Supports / Cantilever Brackets",
-            category="Support",
-            description="Structural heavy-duty ceiling/wall support assemblies spaced @ 1.5m intervals",
-            quantity=support_qty,
-            unit="pcs",
-        ),
     ]
+
+    # Generate width-sized and mounting-type-specific support hardware
+    support_groups: Dict[tuple, Dict[str, Any]] = {}
+    for b in branches:
+        w = b.recommended_commercial_width_mm
+        qty = b.supports_count or 1
+        m_type = getattr(b, "support_mounting_type", None) or "ceiling_trapeze"
+        key = (m_type, w)
+        if key not in support_groups:
+            if m_type == "wall_cantilever":
+                name = f"Cantilever Wall Support Bracket ({w}mm Tray)"
+                desc = f"Heavy-duty hot-dip galvanized steel cantilever arm with slotted wall-anchor base for {w}mm cable tray runs."
+            else:
+                name = f"Trapeze Ceiling Support Hanger ({w}mm Tray)"
+                desc = f"Ceiling suspension assembly: 41×41mm Unistrut channel sized for {w}mm tray, dual M10 threaded drop rods, nuts & channel spring nuts."
+            support_groups[key] = {
+                "item_name": name,
+                "category": "Support",
+                "description": desc,
+                "quantity": 0,
+                "unit": "pcs",
+            }
+        support_groups[key]["quantity"] += qty
+
+    for _, s_data in sorted(support_groups.items(), key=lambda x: (x[0][0], x[0][1])):
+        accessories.append(AccessoryBomItem(**s_data))
 
     if parameters.add_metallic_divider and branches:
         divider_len = sum(
@@ -940,6 +1076,11 @@ def generate_bill_of_materials(
         for _, data in sorted(reducer_groups.items(), key=lambda x: (-x[0][0], -x[0][1]))
     ]
 
+    total_cable_weight_kg = round(sum(resolve_cable_weight_kg_m(c, c.od_mm) * c.total_length_m * c.count for c in cables if c.status == "ROUTED"), 2)
+    total_tray_weight_kg = round(sum(b.tray_dead_load_kg_m * b.length_m for b in branches), 2)
+    total_installation_weight_kg = round(total_cable_weight_kg + total_tray_weight_kg, 2)
+    total_supports_count = sum(b.supports_count for b in branches)
+
     return BillOfMaterials(
         trays=tray_items,
         accessories=accessories,
@@ -951,5 +1092,9 @@ def generate_bill_of_materials(
         total_cable_length_m=round(total_cable_len, 2),
         total_fittings_count=sum(f.quantity for f in fittings),
         total_reducers_count=sum(r.quantity for r in reducers),
+        total_cable_weight_kg=total_cable_weight_kg,
+        total_tray_weight_kg=total_tray_weight_kg,
+        total_installation_weight_kg=total_installation_weight_kg,
+        total_supports_count=total_supports_count,
     )
 

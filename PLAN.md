@@ -668,12 +668,67 @@ Based on the APV Solid / Perforated Systems catalog:
 3. **UI Integration (`frontend/src/components/nodes-fittings-tab.tsx`)**:
    - Replace `<select>` with `FittingSelectDropdown` and `ReducerSelectDropdown`.
    - Display a `Qty: 2× (Pair)` badge when a 45° fitting is active.
-4. **Verification & Proof**:
+4. **Verification & Proof (COMPLETED)**:
    - Unit tests in `frontend/src/tests/fittings.test.mjs` verifying 45° fittings yield `quantity = 2` in the BOM.
    - Unit tests in `backend/tests/test_routing_engine.py` verifying backend BOM calculation matches.
-   - Run `npm test` in `frontend/` (100% pass).
-   - Run `pytest tests` in `backend/` (100% pass).
+   - Run `npm test` in `frontend/` (100% pass - 64/64 tests).
+   - Run `pytest tests` in `backend/` (100% pass - 35/35 tests).
    - Run `npm run build` in `frontend/` (0 errors).
+
+---
+
+## 17. Task: Cable Tray Structural Loading (kg/m) & Dynamic Support Intervals
+
+### Goal & Scope
+Once cables are routed across the cable tray network, determine the precise structural loading ($W_{\text{total}}$ in $\text{kg/m}$) for every branch to dynamically evaluate the permissible support spacing ($S = 1.5\,\text{m}, 2.0\,\text{m}, 2.5\,\text{m}, 3.0\,\text{m}$) in accordance with IEC 61537 / NEMA VE 1 load-span ratings. Accurately calculate the required support quantities following NEMA VE-2 (branch span count plus dedicated supports within $600\,\text{mm}$ of junction fittings), support selectable mounting styles per branch (Ceiling Trapeze Hangers vs. Wall Cantilever Brackets), and integrate sized support hardware and total installation weight into the Bill of Materials (BOM) and UI.
+
+### Engineering Formulas & Rules
+1. **Cable Linear Load ($W_{\text{cables}}$)**:
+   $$W_{\text{cables}} = \sum_{i \in \text{cables}} (w_i \times n_i) \quad [\text{kg/m}]$$
+   Where $w_i$ is resolved via multi-tier fallback:
+   - Tier 1: Explicit column from Excel import (`Weight`, `kg/m`, `kg/km`).
+   - Tier 2: Technical handbook catalog match (`weight_kg_km / 1000`).
+   - Tier 3: Empirical copper & sheath density formula:
+     - Power: $w \approx \text{OD}^2 \times 0.0022\,\text{kg/m}$
+     - Control: $w \approx \text{OD}^2 \times 0.0018\,\text{kg/m}$
+     - Signal/Data: $w \approx \text{OD}^2 \times 0.0014\,\text{kg/m}$
+2. **Tray Dead Weight ($W_{\text{tray}}$)**:
+   $$W_{\text{tray}} = (W + 2H) \times t \times \rho_{\text{steel}} \times (1 - \text{perforation\_factor}) \times 10^{-6} \quad [\text{kg/m}]$$
+   Plus cover weight ($W_{\text{cover}}$) if equipped.
+3. **Total Design Load ($W_{\text{total}}$)**:
+   $$W_{\text{total}} = (W_{\text{cables}} \times (1 + \text{safety\_margin})) + W_{\text{tray}} + W_{\text{cover}} \quad [\text{kg/m}]$$
+4. **Dynamic Span Evaluation ($S$)**:
+   - $W_{\text{total}} \le 40\,\text{kg/m} \implies S = 3.0\,\text{m}$
+   - $40 < W_{\text{total}} \le 75\,\text{kg/m} \implies S = 2.5\,\text{m}$
+   - $75 < W_{\text{total}} \le 125\,\text{kg/m} \implies S = 2.0\,\text{m}$
+   - $W_{\text{total}} > 125\,\text{kg/m} \implies S = 1.5\,\text{m}$
+5. **NEMA VE-2 Support Count**:
+   $$N_{\text{supports}} = \left\lceil \frac{L_{\text{branch}}}{S} \right\rceil + N_{\text{fitting\_supports}}$$
+   Where junction nodes (tees, elbows, crosses, risers) receive support allowances within $600\,\text{mm}$ of each fitting port.
+6. **BOM Hardware Sizing**:
+   - Ceiling Trapeze Hangers: Sized to tray width with M10/M12 threaded rods & Unistrut channel.
+   - Wall Cantilever Brackets: Sized to tray width heavy-duty hot-dip galvanized steel.
+   - Total network structural weight: Cable Weight (kg) + Tray Steel Weight (kg) + Hardware.
+
+### Implementation Steps (COMPLETED)
+1. **Data Models (`types.ts` & `models.py`) (COMPLETED)**:
+   - Added structural load metrics to `BranchSizingResult`, `Branch`, `Cable`, `CalculationParameters`, and `BillOfMaterials`.
+2. **Structural Engine (`structural-engine.ts` & `routing_engine.py`) (COMPLETED)**:
+   - Implemented cable weight resolution, tray dead load calculation, dynamic span determination, and NEMA VE-2 support counting with exact parity between TypeScript and Python.
+3. **Excel Import Enhancement (`excel.ts`) (COMPLETED)**:
+   - Auto-mapped `Weight` / `kg/m` / `kg/km` columns, parsed into `weight_kg_m` and `weight_kg_km`, and auto-detected mounting style columns.
+4. **UI Dashboard & Inspection (`results-table.tsx`, `branches-table.tsx`, `defaults-settings-tab.tsx`, `bom-tab.tsx`) (COMPLETED)**:
+   - **Branches Table**: Added `Support Style` toggle (Ceiling Trapeze / Wall Cantilever).
+   - **Results Table**: Added `Load & Span` column (`total_load_kg_m`, span, support count, and mounting style).
+   - **Expandable Sub-Row**: Added structural loading card breakdown (cable weight, tray dead load, design load with safety margin, span rating, and load utilization) + individual cable `Weight (kg/m)` and `Total Wt (kg)` columns.
+   - **BOM Tab**: Added dedicated Structural Loading & Support Take-Off banner (Total Cable Weight, Tray Steel Dead Weight, Total Installation Weight, Total Support Locations) + width-sized support items.
+   - **Settings Tab**: Added Structural Safety Margin (0-40%), Tray Sheet Metal Thickness (1.0-2.0mm), and Default Support Mounting selector.
+   - **Excel Exporter**: Added structural columns to Branch Sizing sheet and Section 5 Structural Schedule to BOM sheet.
+5. **Verification & Proof (COMPLETED)**:
+   - Frontend unit tests (`frontend/src/tests/structural.test.mjs`): 79/79 passing (`npm test`).
+   - Frontend production build (`npm run build`): Completed in 2.8s with 0 errors.
+   - Backend unit tests (`backend/tests/test_structural_loading.py`): 41/41 passing (`pytest tests`).
+
 
 
 

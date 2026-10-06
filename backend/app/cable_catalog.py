@@ -147,21 +147,11 @@ LOW_VOLTAGE_CABLE_CATALOG: List[Dict[str, Any]] = [
 ]
 
 
-def lookup_catalog_cable_od(raw_type: str) -> Optional[float]:
-    """
-    Intelligent Catalog Cable OD Lookup.
-    Recognizes industrial designation patterns such as:
-    - '4x50', '4X50', '4 x 50', '4C x 50', '4Cx50mm2', '4C*50', '4 x 50 mm²' -> 32.1
-    - '3x16', '3x16mm2', '3Cx16' -> 18.4
-    - '2x2.5', '2x2.5mm2' -> 10.0
-    - '5x70', '5x70mm2' -> 39.7
-    - '12x1.5', '12G1.5', '12Gx1.5 mm²' -> 14.8
-    - '7x1.5', '7Gx1.5 mm²' -> 11.5
-    - '1x240', '1x240mm2', '1C x 240' -> 29.7 (0.6/1kV)
-    - Exact product code matching (e.g. 'CP1-F104-U14' -> 32.1)
-    """
+def lookup_catalog_cable(raw_type: str) -> Optional[Dict[str, Any]]:
+    """Intelligent Catalog Cable Lookup returning matched catalog item."""
     if not raw_type:
         return None
+
     clean = re.sub(r"(\d+),(\d+)", r"\1.\2", str(raw_type).strip())
     lower = clean.lower()
 
@@ -169,7 +159,7 @@ def lookup_catalog_cable_od(raw_type: str) -> Optional[float]:
     for item in LOW_VOLTAGE_CABLE_CATALOG:
         code = item.get("code")
         if code and code.lower() == lower:
-            return float(item["od_mm"])
+            return item
 
     # 2. Multi-Core Pattern Extraction: (cores) x (size in mm2)
     # Matches: 4x50, 4 x 50, 4cx50, 4c x 50, 4*50, 4/50, 4x2.5, 2Xx1.5, 4Gx1.5, 12x1.5, etc.
@@ -185,18 +175,18 @@ def lookup_catalog_cable_od(raw_type: str) -> Optional[float]:
                 
                 for item in LOW_VOLTAGE_CABLE_CATALOG:
                     if item["category"] == target_cat and abs(item["size_mm2"] - size) < 0.01:
-                        return float(item["od_mm"])
+                        return item
 
                 # If 1C not in 0.6/1kV flex, check 450/750V
                 if cores == 1:
                     for item in LOW_VOLTAGE_CABLE_CATALOG:
                         if item["category"] == "1C_450_750V_FLEX" and abs(item["size_mm2"] - size) < 0.01:
-                            return float(item["od_mm"])
+                            return item
 
                 # Check general catalog for matching cores and size (covers MULTI_CTRL: 7C, 10C, 12C, 18C, etc.)
                 for item in LOW_VOLTAGE_CABLE_CATALOG:
                     if item.get("cores") == cores and abs(item["size_mm2"] - size) < 0.01:
-                        return float(item["od_mm"])
+                        return item
         except (ValueError, TypeError):
             pass
 
@@ -212,11 +202,23 @@ def lookup_catalog_cable_od(raw_type: str) -> Optional[float]:
             size = float(single_area_match.group(1))
             for item in LOW_VOLTAGE_CABLE_CATALOG:
                 if item["category"] == "1C_06_1KV_FLEX" and abs(item["size_mm2"] - size) < 0.01:
-                    return float(item["od_mm"])
+                    return item
             for item in LOW_VOLTAGE_CABLE_CATALOG:
                 if item["category"] == "1C_450_750V_FLEX" and abs(item["size_mm2"] - size) < 0.01:
-                    return float(item["od_mm"])
+                    return item
         except (ValueError, TypeError):
             pass
 
     return None
+
+
+def lookup_catalog_cable_od(raw_type: str) -> Optional[float]:
+    """Return catalog OD in mm if matched, else None."""
+    item = lookup_catalog_cable(raw_type)
+    return float(item["od_mm"]) if item and "od_mm" in item else None
+
+
+def lookup_catalog_cable_weight_kg_km(raw_type: str) -> Optional[float]:
+    """Return catalog weight in kg/km if matched, else None."""
+    item = lookup_catalog_cable(raw_type)
+    return float(item["weight_kg_km"]) if item and "weight_kg_km" in item else None

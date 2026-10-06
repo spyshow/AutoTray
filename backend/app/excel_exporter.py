@@ -135,6 +135,12 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
         "Commercial Width (mm)",
         "Fill Ratio (%)",
         "Status",
+        "Cable Load (kg/m)",
+        "Tray Dead Load (kg/m)",
+        "Design Load (kg/m)",
+        "Support Span (m)",
+        "Supports Count",
+        "Mounting Style",
         "Routed Cables List",
     ]
 
@@ -147,6 +153,7 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
     ws_branches.row_dimensions[1].height = 28
 
     for r_idx, b in enumerate(response.branches, 2):
+        m_str = "Wall Cantilever" if getattr(b, "support_mounting_type", "ceiling_trapeze") == "wall_cantilever" else "Ceiling Trapeze"
         row_cells = [
             ws_branches.cell(row=r_idx, column=1, value=b.branch_id),
             ws_branches.cell(row=r_idx, column=2, value=b.node_from),
@@ -166,7 +173,13 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
             ws_branches.cell(row=r_idx, column=16, value=b.recommended_commercial_width_mm),
             ws_branches.cell(row=r_idx, column=17, value=b.fill_ratio_pct),
             ws_branches.cell(row=r_idx, column=18, value=b.status),
-            ws_branches.cell(row=r_idx, column=19, value=", ".join(str(x) for x in b.cables_routed)),
+            ws_branches.cell(row=r_idx, column=19, value=getattr(b, "cable_load_kg_m", 0.0)),
+            ws_branches.cell(row=r_idx, column=20, value=getattr(b, "tray_dead_load_kg_m", 0.0)),
+            ws_branches.cell(row=r_idx, column=21, value=getattr(b, "total_load_kg_m", 0.0)),
+            ws_branches.cell(row=r_idx, column=22, value=getattr(b, "recommended_support_span_m", 2.0)),
+            ws_branches.cell(row=r_idx, column=23, value=getattr(b, "supports_count", 1)),
+            ws_branches.cell(row=r_idx, column=24, value=m_str),
+            ws_branches.cell(row=r_idx, column=25, value=", ".join(str(x) for x in b.cables_routed)),
         ]
 
         is_stripe = (r_idx % 2 == 1)
@@ -185,7 +198,10 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
         for idx in range(5, 17):
             row_cells[idx].alignment = right_align
         row_cells[17].alignment = center_align
-        row_cells[18].alignment = left_align
+        for idx in range(18, 23):
+            row_cells[idx].alignment = right_align
+        row_cells[23].alignment = center_align
+        row_cells[24].alignment = left_align
 
         # Status badge coloring
         status_cell = row_cells[17]
@@ -505,6 +521,41 @@ def generate_excel_report(data: Union[CalculationResponse, Dict[str, Any]]) -> i
     else:
         ws_bom.cell(row=cur_row, column=1, value="No routed cables found.").font = status_empty_font
         cur_row += 2
+
+    # 5. Structural Loading & Support Schedule
+    cur_row += 1
+    ws_bom.cell(row=cur_row, column=1, value="5. STRUCTURAL WEIGHT & SUPPORT SCHEDULE (IEC 61537 / NEMA VE 1)").font = section_font
+    cur_row += 1
+
+    struct_headers = ["Structural Metric", "Calculated Value", "Unit", "Engineering Standard"]
+    for col_num, h in enumerate(struct_headers, 1):
+        cell = ws_bom.cell(row=cur_row, column=col_num, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+    ws_bom.row_dimensions[cur_row].height = 26
+    cur_row += 1
+
+    struct_rows = [
+        ("Total Routed Cable Weight", getattr(bom_data, "total_cable_weight_kg", 0.0) if bom_data else 0.0, "kg", "Technical handbook / Catalog / IEC density"),
+        ("Cable Tray Steel Dead Weight", getattr(bom_data, "total_tray_weight_kg", 0.0) if bom_data else 0.0, "kg", "Sheet steel @ 7850 kg/m³, 15% perforation discount"),
+        ("Total Installation Structural Weight", getattr(bom_data, "total_installation_weight_kg", 0.0) if bom_data else 0.0, "kg", "Cable weight + Tray dead weight"),
+        ("Total Required Support Locations", getattr(bom_data, "total_supports_count", 0) if bom_data else 0, "locations", "IEC 61537 SWL safe spans + NEMA VE-2 junction supports"),
+    ]
+    for metric, val, unit, ref in struct_rows:
+        ws_bom.cell(row=cur_row, column=1, value=metric).font = bold_regular_font
+        ws_bom.cell(row=cur_row, column=2, value=val).font = bold_regular_font
+        ws_bom.cell(row=cur_row, column=3, value=unit).font = regular_font
+        ws_bom.cell(row=cur_row, column=4, value=ref).font = regular_font
+        for c in range(1, 5):
+            ws_bom.cell(row=cur_row, column=c).border = thin_border
+            if c in [2, 3]:
+                ws_bom.cell(row=cur_row, column=c).alignment = center_align
+            else:
+                ws_bom.cell(row=cur_row, column=c).alignment = left_align
+        cur_row += 1
+    cur_row += 1
 
     # =========================================================================
     # SHEET 6: Fittings & Reducers (Dedicated Sheet)

@@ -167,8 +167,11 @@ export const LOW_VOLTAGE_CABLE_CATALOG: CatalogCableItem[] = [
  * - "7x1.5", "7Gx1.5 mm²" -> 11.5
  * - "1x240", "1x240mm2", "1C x 240" -> 29.7 (0.6/1kV)
  * - Exact product code matching (e.g. "CP1-F104-U14" -> 32.1)
+/**
+ * Intelligent Catalog Cable Lookup
+ * Returns full CatalogCableItem or null.
  */
-export function lookupCatalogCableOd(rawType: string, catalog: CatalogCableItem[] = LOW_VOLTAGE_CABLE_CATALOG): number | null {
+export function lookupCatalogCable(rawType: string, catalog: CatalogCableItem[] = LOW_VOLTAGE_CABLE_CATALOG): CatalogCableItem | null {
   if (!rawType) return null;
   const clean = rawType.trim().replace(/(\d+),(\d+)/g, '$1.$2');
   const lower = clean.toLowerCase();
@@ -177,7 +180,7 @@ export function lookupCatalogCableOd(rawType: string, catalog: CatalogCableItem[
   const byCode = catalog.find(
     c => c.code && c.code.toLowerCase() === lower
   );
-  if (byCode) return byCode.od_mm;
+  if (byCode) return byCode;
 
   // 2. Multi-Core Pattern Extraction: (cores) x (size in mm2)
   // Matches: 4x50, 4 x 50, 4cx50, 4c x 50, 4*50, 4/50, 4x2.5, 2Xx1.5, 4Gx1.5, 12x1.5, 12Gx1.5, etc.
@@ -191,28 +194,28 @@ export function lookupCatalogCableOd(rawType: string, catalog: CatalogCableItem[
     if (cores >= 1 && size > 0) {
       if (cores === 4) {
         const item = catalog.find(c => c.category === '4C_06_1KV' && Math.abs(c.size_mm2 - size) < 0.01);
-        if (item) return item.od_mm;
+        if (item) return item;
       } else if (cores === 3) {
         const item = catalog.find(c => c.category === '3C_06_1KV' && Math.abs(c.size_mm2 - size) < 0.01);
-        if (item) return item.od_mm;
+        if (item) return item;
       } else if (cores === 2) {
         const item = catalog.find(c => c.category === '2C_06_1KV' && Math.abs(c.size_mm2 - size) < 0.01);
-        if (item) return item.od_mm;
+        if (item) return item;
       } else if (cores === 5) {
         const item = catalog.find(c => c.category === '5C_06_1KV' && Math.abs(c.size_mm2 - size) < 0.01);
-        if (item) return item.od_mm;
+        if (item) return item;
       } else if (cores === 1) {
         // Single core 0.6/1kV sheathed
         const item = catalog.find(c => c.category === '1C_06_1KV_FLEX' && Math.abs(c.size_mm2 - size) < 0.01);
-        if (item) return item.od_mm;
+        if (item) return item;
         // Or 450/750V
         const item450 = catalog.find(c => c.category === '1C_450_750V_FLEX' && Math.abs(c.size_mm2 - size) < 0.01);
-        if (item450) return item450.od_mm;
+        if (item450) return item450;
       }
 
       // Check general catalog for matching cores and size (e.g. MULTI_CTRL 7C, 10C, 12C, 18C, etc.)
       const multiItem = catalog.find(c => c.cores === cores && Math.abs(c.size_mm2 - size) < 0.01);
-      if (multiItem) return multiItem.od_mm;
+      if (multiItem) return multiItem;
     }
 
     // IMPORTANT: It matched a multi-core designation (e.g. 12x1.5).
@@ -227,10 +230,26 @@ export function lookupCatalogCableOd(rawType: string, catalog: CatalogCableItem[
   if (matchArea) {
     const size = parseFloat(matchArea[1]);
     const item06 = catalog.find(c => c.category === '1C_06_1KV_FLEX' && Math.abs(c.size_mm2 - size) < 0.01);
-    if (item06) return item06.od_mm;
+    if (item06) return item06;
     const item450 = catalog.find(c => c.category === '1C_450_750V_FLEX' && Math.abs(c.size_mm2 - size) < 0.01);
-    if (item450) return item450.od_mm;
+    if (item450) return item450;
   }
 
   return null;
+}
+
+/**
+ * Intelligent Catalog Cable OD Lookup
+ */
+export function lookupCatalogCableOd(rawType: string, catalog: CatalogCableItem[] = LOW_VOLTAGE_CABLE_CATALOG): number | null {
+  const item = lookupCatalogCable(rawType, catalog);
+  return item ? item.od_mm : null;
+}
+
+/**
+ * Intelligent Catalog Cable Weight (kg/km) Lookup
+ */
+export function lookupCatalogCableWeightKgKm(rawType: string, catalog: CatalogCableItem[] = LOW_VOLTAGE_CABLE_CATALOG): number | null {
+  const item = lookupCatalogCable(rawType, catalog);
+  return item && item.weight_kg_km !== undefined ? item.weight_kg_km : null;
 }

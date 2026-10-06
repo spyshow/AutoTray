@@ -218,6 +218,36 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
         },
       },
       {
+        accessorKey: 'total_load_kg_m',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-0 hover:bg-transparent font-bold text-center"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Load &amp; Span
+            <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const load = row.original.total_load_kg_m ?? 0;
+          const span = row.original.recommended_support_span_m ?? 2.0;
+          const count = row.original.supports_count ?? 1;
+          const mType = row.original.support_mounting_type === 'wall_cantilever' ? 'Wall' : 'Ceiling';
+          return (
+            <div className="text-center">
+              <span className="font-mono font-bold text-xs text-indigo-900 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                {load} kg/m
+              </span>
+              <div className="text-[10px] text-slate-500 mt-0.5">
+                Span: <strong>{span}m</strong> &bull; {count} supp. ({mType})
+              </div>
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => {
@@ -365,12 +395,37 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                     ))}
                   </TableRow>
 
-                  {/* Expandable Sub-Row (Routed Cables List) */}
+                  {/* Expandable Sub-Row (Routed Cables List & Structural Breakdown) */}
                   {row.getIsExpanded() && (
                     <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 border-b-2 border-slate-200">
                       <TableCell colSpan={columns.length} className="p-4">
-                        <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-inner">
-                          <div className="flex items-center justify-between mb-2">
+                        <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-inner space-y-3">
+                          {/* Structural Loading & Support Analysis Card */}
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-medium">Cables Weight</span>
+                              <strong className="text-slate-800 font-mono">{row.original.cable_load_kg_m ?? 0} kg/m</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-medium">Tray Steel Weight</span>
+                              <strong className="text-slate-800 font-mono">{row.original.tray_dead_load_kg_m ?? 0} kg/m</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-medium">Design Load (+15%)</span>
+                              <strong className="text-indigo-700 font-mono">{row.original.total_load_kg_m ?? 0} kg/m</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-medium">Safe Span (IEC 61537)</span>
+                              <strong className="text-emerald-700 font-mono">{row.original.recommended_support_span_m ?? 2.0} m</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-medium">Supports ({row.original.support_mounting_type === 'wall_cantilever' ? 'Wall' : 'Ceiling'})</span>
+                              <strong className="text-amber-700 font-mono">{row.original.supports_count ?? 1} pcs</strong>
+                              <span className="text-[10px] text-slate-400 ml-1">({row.original.load_utilization_pct ?? 0}% util)</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between mb-1">
                             <span className="font-semibold text-xs text-slate-800 flex items-center gap-1.5">
                               <Layers className="h-3.5 w-3.5 text-blue-600" />
                               Cables Routed on Tray [{row.original.branch_id}] ({row.original.cable_count} items)
@@ -380,7 +435,7 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                             </span>
                           </div>
 
-                          <div className="overflow-x-auto max-h-48 text-xs">
+                          <div className="overflow-x-auto max-h-56 text-xs">
                             <table className="w-full text-left border-collapse">
                               <thead>
                                 <tr className="border-b border-slate-200 text-slate-600 font-semibold bg-slate-50">
@@ -390,7 +445,9 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                                   <th className="p-1.5">Formation</th>
                                   <th className="p-1.5 text-right">OD (mm)</th>
                                   <th className="p-1.5 text-right">Qty</th>
-                                  <th className="p-1.5 text-right">Width Contrib (mm)</th>
+                                  <th className="p-1.5 text-right">Width (mm)</th>
+                                  <th className="p-1.5 text-right">Weight (kg/m)</th>
+                                  <th className="p-1.5 text-right">Total Wt (kg)</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -425,13 +482,19 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                                       <td className="p-1.5 text-right font-mono font-semibold text-slate-800">
                                         {cd.width_contribution_mm} mm
                                       </td>
+                                      <td className="p-1.5 text-right font-mono text-slate-700">
+                                        {cd.weight_kg_m ?? '-'}
+                                      </td>
+                                      <td className="p-1.5 text-right font-mono font-semibold text-slate-800">
+                                        {cd.total_weight_kg ? `${cd.total_weight_kg} kg` : '-'}
+                                      </td>
                                     </tr>
                                   ))
                                 ) : (
                                   row.original.cables_routed.map((tag, idx) => (
                                     <tr key={idx} className="hover:bg-slate-50">
                                       <td className="p-1.5 font-mono font-medium text-slate-900">{tag}</td>
-                                      <td colSpan={6} className="p-1.5 text-slate-500 italic">Routed via shortest path</td>
+                                      <td colSpan={8} className="p-1.5 text-slate-500 italic">Routed via shortest path</td>
                                     </tr>
                                   ))
                                 )}
