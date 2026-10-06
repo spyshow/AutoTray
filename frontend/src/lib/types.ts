@@ -39,6 +39,7 @@ export interface NodeFittingConfig {
   user_override?: boolean;
   notes?: string;
   include_cover?: boolean;
+  quantity_multiplier?: number;
   reducers?: Record<string, NodePortReducer>; // keyed by branch_id
 }
 
@@ -64,6 +65,7 @@ export interface CalculatedNodeFitting {
   height_mm: number;
   reducers: Record<string, NodePortReducer>;
   include_cover?: boolean;
+  quantity_multiplier?: number;
   notes?: string;
 }
 

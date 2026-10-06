@@ -639,5 +639,42 @@ Based on the APV Solid / Perforated Systems catalog:
 - Run `.\.venv\Scripts\python.exe -m pytest tests` in `backend/` (ensure 100% pass).
 - Run `npm run build` in `frontend/` (ensure 0 TypeScript/Turbopack errors).
 
+---
+
+## 16. Task: Rich Visual Select Dropdowns with SVGs & 45° Fitting Quantity Multiplier (x2)
+
+### Goal & Scope
+1. **SVG Select Dropdown Menu**:
+   - Replace standard HTML `<select>` with a custom rich dropdown menu so that when users click to open the fitting or reducer selector, every option in the open menu renders its 2.5D SVG illustration, APV catalog name, and geometry tags.
+2. **45° Fitting Quantity Multiplier ($\times 2$)**:
+   - In industrial cable tray installation, 45° bends (`horizontal_elbow_45`, `vertical_inside_riser_45`, `vertical_outside_riser_45`) are deployed in pairs ($\times 2$) to form a complete $90^\circ$ sweep turn or vertical elevation jog without pinching cables.
+   - Automatically set the BOM quantity multiplier to **2 pcs per node** when any 45° fitting is selected, with a clear `Qty: 2× (Pair for Sweep / Offset)` badge in the UI and customizable override.
+
+### Implementation Steps
+1. **Rich Visual Select Dropdown Component (`frontend/src/components/fitting-illustrations.tsx`)**:
+   - `FittingSelectDropdown`:
+     - Trigger button: Current fitting SVG (28×28), bold name, badge, and dropdown chevron.
+     - Dropdown menu: Categorized groups (Horizontal Junctions, Flat Bends, Vertical Risers, Terminations).
+     - Each item displays: 32×32 SVG drawing, APV name, geometry badge (e.g. `Pair 2× (45°)`), and checkmark if active.
+   - `ReducerSelectDropdown`:
+     - Same visual SVG treatment for Concentric, Left Reducer, Right Reducer, and Height Reducer.
+2. **45° Fitting $\times 2$ Quantity Logic**:
+   - `frontend/src/lib/types.ts` & `backend/app/models.py`:
+     - Add `quantity_multiplier?: number` (defaulting to 2 for 45° fittings, 1 for others) to `NodeFittingConfig` and `CalculatedNodeFitting`.
+   - `frontend/src/lib/fittings-engine.ts`:
+     - In `generateFittingsAndReducersBom`: Add `multiplier = node.quantity_multiplier || (is45DegFitting(node.selected_fitting_type) ? 2 : 1)`.
+   - `backend/app/routing_engine.py`:
+     - In `generate_bill_of_materials`: Apply the same $\times 2$ multiplier for 45° fittings.
+3. **UI Integration (`frontend/src/components/nodes-fittings-tab.tsx`)**:
+   - Replace `<select>` with `FittingSelectDropdown` and `ReducerSelectDropdown`.
+   - Display a `Qty: 2× (Pair)` badge when a 45° fitting is active.
+4. **Verification & Proof**:
+   - Unit tests in `frontend/src/tests/fittings.test.mjs` verifying 45° fittings yield `quantity = 2` in the BOM.
+   - Unit tests in `backend/tests/test_routing_engine.py` verifying backend BOM calculation matches.
+   - Run `npm test` in `frontend/` (100% pass).
+   - Run `pytest tests` in `backend/` (100% pass).
+   - Run `npm run build` in `frontend/` (0 errors).
+
+
 
 

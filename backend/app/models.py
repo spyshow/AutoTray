@@ -63,6 +63,7 @@ class NodeFittingConfig(BaseModel):
     user_override: bool = False
     notes: Optional[str] = None
     include_cover: bool = False
+    quantity_multiplier: Optional[int] = None
     reducers: Dict[str, NodePortReducer] = Field(default_factory=dict)
 
 
@@ -88,6 +89,7 @@ class CalculatedNodeFitting(BaseModel):
     height_mm: float
     reducers: Dict[str, NodePortReducer] = Field(default_factory=dict)
     include_cover: bool = False
+    quantity_multiplier: int = 1
     notes: Optional[str] = None
 
 

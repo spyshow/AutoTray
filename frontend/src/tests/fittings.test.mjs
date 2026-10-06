@@ -37,6 +37,14 @@ export function detectDefaultFittingType(connected) {
   return 'horizontal_cross';
 }
 
+export function is45DegFitting(type) {
+  return (
+    type === 'horizontal_elbow_45' ||
+    type === 'vertical_inside_riser_45' ||
+    type === 'vertical_outside_riser_45'
+  );
+}
+
 export function calculateNetworkNodeFittings(branches, branchResults, userConfigs, defaultTrayHeightMm = 60) {
   const sizingMap = new Map();
   if (branchResults) {
@@ -113,6 +121,10 @@ export function calculateNetworkNodeFittings(branches, branchResults, userConfig
       }
     });
 
+    const is45 = is45DegFitting(selectedType);
+    const defaultQty = is45 ? 2 : 1;
+    const qtyMultiplier = userCfg?.quantity_multiplier !== undefined ? userCfg.quantity_multiplier : defaultQty;
+
     calculatedNodes.push({
       node_id: nodeId,
       level: levelDisplay,
@@ -123,6 +135,7 @@ export function calculateNetworkNodeFittings(branches, branchResults, userConfig
       width_mm: maxWidth,
       height_mm: maxHeight,
       reducers,
+      quantity_multiplier: qtyMultiplier,
       notes: userCfg?.notes,
     });
   });
@@ -139,6 +152,7 @@ export function generateFittingsAndReducersBom(nodes) {
       const fType = node.selected_fitting_type;
       const key = `${fType}_${node.width_mm}_${node.height_mm}`;
       const fName = FITTING_TYPE_NAMES[fType] || fType;
+      const multiplier = node.quantity_multiplier !== undefined ? node.quantity_multiplier : (is45DegFitting(fType) ? 2 : 1);
 
       if (!fittingGroups.has(key)) {
         fittingGroups.set(key, {
@@ -154,7 +168,7 @@ export function generateFittingsAndReducersBom(nodes) {
       }
 
       const g = fittingGroups.get(key).item;
-      g.quantity += 1;
+      g.quantity += multiplier;
       g.nodes.push(node.node_id);
     }
 
@@ -309,3 +323,35 @@ test('User Overrides: Preserves manual fitting type, toggled reducers, and eccen
   const redB = reducers.find(r => r.from_width_mm === 300 && r.to_width_mm === 150);
   assert.equal(redB, undefined, 'Disabled reducer must not be included in BOM');
 });
+
+test('45° Fitting Multiplier: Automatically assigns 2x quantity multiplier in calculation and BOM', () => {
+  const branches = [
+    { branch_id: 'BR_1', node_from: 'N_A', node_to: 'N_B', level: 'Level 1', branch_type: 'horizontal', length_m: 5, tray_height_mm: 60 },
+    { branch_id: 'BR_2', node_from: 'N_A', node_to: 'N_C', level: 'Level 1', branch_type: 'horizontal', length_m: 5, tray_height_mm: 60 },
+  ];
+  const branchResults = [
+    { branch_id: 'BR_1', recommended_commercial_width_mm: 300, tray_height_mm: 60 },
+    { branch_id: 'BR_2', recommended_commercial_width_mm: 300, tray_height_mm: 60 },
+  ];
+
+  // User selects 45° Flat Bend
+  const userConfigs = {
+    N_A: {
+      node_id: 'N_A',
+      fitting_type: 'horizontal_elbow_45',
+      user_override: true,
+    },
+  };
+
+  const nodes = calculateNetworkNodeFittings(branches, branchResults, userConfigs, 60);
+  const nodeA = nodes.find(n => n.node_id === 'N_A');
+  assert.ok(nodeA);
+  assert.equal(nodeA.selected_fitting_type, 'horizontal_elbow_45');
+  assert.equal(nodeA.quantity_multiplier, 2, '45° fitting must default to quantity_multiplier = 2');
+
+  const { fittings } = generateFittingsAndReducersBom(nodes);
+  const elbow45 = fittings.find(f => f.fitting_type === 'horizontal_elbow_45');
+  assert.ok(elbow45, '45° Flat Bend should be in BOM');
+  assert.equal(elbow45.quantity, 2, 'BOM quantity for single 45° node must be 2 pcs (pair)');
+});
+

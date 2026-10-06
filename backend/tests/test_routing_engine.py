@@ -611,3 +611,35 @@ def test_network_node_fittings_and_reducers():
     assert any(r.from_width_mm == red_c.from_width_mm and r.to_width_mm == red_c.to_width_mm for r in resp.bom.reducers)
 
 
+def test_network_node_fittings_45_deg_multiplier():
+    from app.models import NodeFittingConfig
+
+    params = CalculationParameters()
+    branches = [
+        Branch(branch_id="BR_1", node_from="N_A", node_to="N_B", level="Level 1", branch_type="horizontal", length_m=5.0),
+        Branch(branch_id="BR_2", node_from="N_A", node_to="N_C", level="Level 1", branch_type="horizontal", length_m=5.0),
+    ]
+    cables = [
+        Cable(cable_tag="C1", source_node="N_B", dest_node="N_C", cable_type="power", od_mm=20.0, count=2)
+    ]
+    node_fittings = {
+        "N_A": NodeFittingConfig(
+            node_id="N_A",
+            fitting_type="horizontal_elbow_45",
+            user_override=True,
+        )
+    }
+
+    resp = solve_routing_and_sizing(params, branches, cables, node_fittings=node_fittings)
+    node_a = next((n for n in resp.nodes if n.node_id == "N_A"), None)
+    assert node_a is not None
+    assert node_a.selected_fitting_type == "horizontal_elbow_45"
+    assert node_a.quantity_multiplier == 2
+
+    assert resp.bom is not None
+    elbow_item = next((f for f in resp.bom.fittings if f.fitting_type == "horizontal_elbow_45"), None)
+    assert elbow_item is not None
+    assert elbow_item.quantity == 2
+
+
+

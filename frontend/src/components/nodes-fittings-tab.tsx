@@ -8,12 +8,14 @@ import {
   ReducerType,
   NodePortReducer,
 } from '@/lib/types';
-import { FITTING_TYPE_NAMES, REDUCER_TYPE_NAMES } from '@/lib/fittings-engine';
+import { FITTING_TYPE_NAMES, REDUCER_TYPE_NAMES, is45DegFitting } from '@/lib/fittings-engine';
 import {
   FittingIllustration,
   ReducerIllustration,
   FittingDetailModal,
   FittingGuideModal,
+  FittingSelectDropdown,
+  ReducerSelectDropdown,
   FITTING_CATALOG_REGISTRY,
 } from '@/components/fitting-illustrations';
 import { Card, CardContent } from '@/components/ui/card';
@@ -107,9 +109,11 @@ export function NodesFittingsTab({
 
   const handleFittingTypeChange = (node: CalculatedNodeFitting, newType: FittingType) => {
     const existing = nodeConfigs[node.node_id] || { node_id: node.node_id };
+    const is45 = is45DegFitting(newType);
     onChangeNodeConfig(node.node_id, {
       ...existing,
       fitting_type: newType,
+      quantity_multiplier: is45 ? 2 : 1,
       user_override: newType !== node.detected_fitting_type,
     });
   };
@@ -417,37 +421,12 @@ export function NodesFittingsTab({
                         </div>
 
                         {/* Dropdown & Metadata */}
-                        <div className="space-y-1.5 flex-1 min-w-[190px]">
-                          <select
+                        <div className="space-y-1.5 flex-1 min-w-[200px]">
+                          <FittingSelectDropdown
                             value={node.selected_fitting_type}
-                            onChange={e => handleFittingTypeChange(node, e.target.value as FittingType)}
-                            className="w-full h-8 text-xs font-semibold px-2 border border-slate-200 rounded-md bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          >
-                            <optgroup label="Horizontal Junctions">
-                              <option value="horizontal_tee">Equal Tee (Horizontal Tee)</option>
-                              <option value="horizontal_half_tee">Half Equal Tee (Offset Branch)</option>
-                              <option value="horizontal_cross">Crosspiece (4-Way Cross)</option>
-                              <option value="vertical_downward_tee">Vertical Downward Skewed Tee</option>
-                            </optgroup>
-                            <optgroup label="Flat Bends (Horizontal Elbows)">
-                              <option value="horizontal_elbow_90">90° Flat Bend</option>
-                              <option value="horizontal_elbow_45">45° Flat Bend</option>
-                            </optgroup>
-                            <optgroup label="Vertical Risers &amp; Offsets">
-                              <option value="vertical_inside_riser">90° Inside Riser (Upward)</option>
-                              <option value="vertical_outside_riser">90° Outside Riser (Downward)</option>
-                              <option value="vertical_inside_riser_45">45° Inside Riser (Upward)</option>
-                              <option value="vertical_outside_riser_45">45° Outside Riser (Downward)</option>
-                              <option value="skewed_downward_bend">Right Downward Skewed Bend</option>
-                            </optgroup>
-                            <optgroup label="Terminations &amp; Outlets">
-                              <option value="electrical_board_outlet">Electrical Board Outlet / Drop Flange</option>
-                              <option value="straight_coupler">Straight Splice Coupler</option>
-                              <option value="closed_bend">Closed Bend / Terminal End</option>
-                              <option value="end_cap">End Cap / Terminal Drop</option>
-                              <option value="none">None / Pass-Through</option>
-                            </optgroup>
-                          </select>
+                            onChange={newType => handleFittingTypeChange(node, newType)}
+                            className="w-full"
+                          />
 
                           <div className="flex flex-wrap items-center gap-1.5">
                             {isOverridden ? (
@@ -457,6 +436,13 @@ export function NodesFittingsTab({
                             ) : (
                               <Badge variant="outline" className="text-[9px] bg-slate-100 text-slate-600 border-slate-200">
                                 Auto-Detected
+                              </Badge>
+                            )}
+
+                            {/* 45 Degree Pair Multiplier Indicator */}
+                            {is45DegFitting(node.selected_fitting_type) && (
+                              <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-800 border-amber-300 font-bold">
+                                2× Pair ({node.quantity_multiplier || 2} pcs)
                               </Badge>
                             )}
 
@@ -548,19 +534,14 @@ export function NodesFittingsTab({
                                 </div>
 
                                 <div className="flex items-center gap-1.5">
-                                  <select
+                                  <ReducerSelectDropdown
                                     disabled={!reducer.enabled}
                                     value={reducer.reducer_type}
-                                    onChange={e =>
-                                      handleReducerGeometryChange(node, reducer.branch_id, e.target.value as ReducerType)
+                                    onChange={newGeom =>
+                                      handleReducerGeometryChange(node, reducer.branch_id, newGeom)
                                     }
-                                    className="h-6 px-1.5 text-[10px] font-medium border border-slate-200 rounded bg-white text-slate-700 disabled:opacity-50"
-                                  >
-                                    <option value="concentric">Concentric (Symmetric)</option>
-                                    <option value="eccentric_left">Left Reducer (Flat Left)</option>
-                                    <option value="eccentric_right">Right Reducer (Flat Right)</option>
-                                    <option value="height_reducer">Height Reducer (Flange Step)</option>
-                                  </select>
+                                    className="w-48"
+                                  />
                                 </div>
                               </div>
                             );

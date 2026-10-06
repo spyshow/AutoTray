@@ -38,6 +38,17 @@ export const REDUCER_TYPE_NAMES: Record<ReducerType, string> = {
 };
 
 /**
+ * Checks whether a fitting is a 45° bend which requires pairs (x2) in standard installation.
+ */
+export function is45DegFitting(type: FittingType): boolean {
+  return (
+    type === 'horizontal_elbow_45' ||
+    type === 'vertical_inside_riser_45' ||
+    type === 'vertical_outside_riser_45'
+  );
+}
+
+/**
  * Heuristically detects the fitting type based on the connected branches at a node.
  */
 export function detectDefaultFittingType(connected: ConnectedBranchInfo[]): FittingType {
@@ -146,6 +157,10 @@ export function calculateNetworkNodeFittings(
       }
     });
 
+    const is45 = is45DegFitting(selectedType);
+    const defaultQty = is45 ? 2 : 1;
+    const qtyMultiplier = userCfg?.quantity_multiplier !== undefined ? userCfg.quantity_multiplier : defaultQty;
+
     calculatedNodes.push({
       node_id: nodeId,
       level: levelDisplay,
@@ -156,6 +171,8 @@ export function calculateNetworkNodeFittings(
       width_mm: maxWidth,
       height_mm: maxHeight,
       reducers,
+      include_cover: userCfg?.include_cover,
+      quantity_multiplier: qtyMultiplier,
       notes: userCfg?.notes,
     });
   });
@@ -180,6 +197,7 @@ export function generateFittingsAndReducersBom(nodes: CalculatedNodeFitting[]): 
       const fType = node.selected_fitting_type;
       const key = `${fType}_${node.width_mm}_${node.height_mm}`;
       const fName = FITTING_TYPE_NAMES[fType] || fType;
+      const multiplier = node.quantity_multiplier !== undefined ? node.quantity_multiplier : (is45DegFitting(fType) ? 2 : 1);
 
       if (!fittingGroups.has(key)) {
         fittingGroups.set(key, {
@@ -195,7 +213,7 @@ export function generateFittingsAndReducersBom(nodes: CalculatedNodeFitting[]): 
       }
 
       const g = fittingGroups.get(key)!.item;
-      g.quantity += 1;
+      g.quantity += multiplier;
       g.nodes.push(node.node_id);
     }
 

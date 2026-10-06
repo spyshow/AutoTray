@@ -210,6 +210,10 @@ def detect_default_fitting_type(connected: List[ConnectedBranchInfo]) -> str:
     return "horizontal_cross"
 
 
+def is_45_deg_fitting(fitting_type: str) -> bool:
+    return fitting_type in ("horizontal_elbow_45", "vertical_inside_riser_45", "vertical_outside_riser_45")
+
+
 def calculate_network_node_fittings(
     branches: List[Branch],
     branch_results: Optional[List[BranchSizingResult]] = None,
@@ -270,6 +274,10 @@ def calculate_network_node_fittings(
                     enabled=saved_reducer.enabled if saved_reducer is not None else True,
                 )
 
+        is_45 = is_45_deg_fitting(selected_type)
+        default_qty = 2 if is_45 else 1
+        qty_mult = user_cfg.quantity_multiplier if (user_cfg and user_cfg.quantity_multiplier is not None) else default_qty
+
         calculated_nodes.append(
             CalculatedNodeFitting(
                 node_id=node_id,
@@ -281,6 +289,8 @@ def calculate_network_node_fittings(
                 width_mm=max_width,
                 height_mm=max_height,
                 reducers=reducers,
+                include_cover=user_cfg.include_cover if user_cfg else False,
+                quantity_multiplier=qty_mult,
                 notes=user_cfg.notes if user_cfg else None,
             )
         )
@@ -902,7 +912,8 @@ def generate_bill_of_materials(
                         "quantity": 0,
                         "nodes": [],
                     }
-                fitting_groups[f_key]["quantity"] += 1
+                mult = node.quantity_multiplier if getattr(node, "quantity_multiplier", None) is not None else (2 if is_45_deg_fitting(f_type) else 1)
+                fitting_groups[f_key]["quantity"] += mult
                 fitting_groups[f_key]["nodes"].append(node.node_id)
 
             for r in node.reducers.values():

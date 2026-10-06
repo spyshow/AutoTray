@@ -11,6 +11,16 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+} from '@/components/ui/select';
+import { is45DegFitting } from '@/lib/fittings-engine';
 import { Layers, ShieldCheck, CheckCircle2, ArrowRight, BookOpen, Eye, Info } from 'lucide-react';
 
 export interface FittingCatalogItem {
@@ -1018,4 +1028,344 @@ export const FittingGuideModal: React.FC<{
     </Dialog>
   );
 };
+
+/**
+ * Rich Dropdown Selector for Cable Tray Fittings featuring 2.5D SVGs in the trigger and menu.
+ */
+export const FittingSelectDropdown: React.FC<{
+  value: FittingType;
+  onChange: (value: FittingType) => void;
+  disabled?: boolean;
+  className?: string;
+}> = ({ value, onChange, disabled, className = '' }) => {
+  const meta = FITTING_CATALOG_REGISTRY[value] || FITTING_CATALOG_REGISTRY.none;
+  const is45 = is45DegFitting(value);
+
+  return (
+    <Select value={value} onValueChange={val => onChange(val as FittingType)} disabled={disabled}>
+      <SelectTrigger
+        className={`h-9 w-full text-xs font-semibold px-2 py-1 bg-white border-slate-200 hover:border-indigo-400 focus:ring-1 focus:ring-indigo-500 rounded-md shadow-2xs ${className}`}
+      >
+        <div className="flex items-center gap-2 overflow-hidden text-left flex-1 min-w-0">
+          <div className="w-6 h-6 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+            <FittingIllustration type={value} size={22} />
+          </div>
+          <span className="font-bold text-slate-800 text-xs truncate">
+            {meta.apvName}
+          </span>
+          {is45 && (
+            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-50 text-amber-700 border-amber-300 font-bold ml-auto flex-shrink-0">
+              2× Pair
+            </Badge>
+          )}
+        </div>
+      </SelectTrigger>
+
+      <SelectContent className="max-h-96 w-80 sm:w-96 p-1.5 bg-white border-slate-200 shadow-2xl">
+        <SelectGroup>
+          <SelectLabel>Horizontal Junctions</SelectLabel>
+          <SelectItem value="horizontal_tee" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="horizontal_tee" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Equal Tee</span>
+                <span className="text-[10px] text-slate-500">Horizontal 3-Way 90° Junction</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="horizontal_half_tee" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="horizontal_half_tee" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Half Equal Tee</span>
+                <span className="text-[10px] text-slate-500">Offset Asymmetric Branch</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="horizontal_cross" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="horizontal_cross" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Crosspiece (4-Way Cross)</span>
+                <span className="text-[10px] text-slate-500">4-Way 90° Planar Distribution</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="vertical_downward_tee" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="vertical_downward_tee" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Vertical Downward Skewed Tee</span>
+                <span className="text-[10px] text-slate-500">Horizontal Header with Down Chute Drop</span>
+              </div>
+            </div>
+          </SelectItem>
+        </SelectGroup>
+
+        <SelectSeparator />
+
+        <SelectGroup>
+          <SelectLabel>Flat Bends (Horizontal Elbows)</SelectLabel>
+          <SelectItem value="horizontal_elbow_90" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="horizontal_elbow_90" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">90° Flat Bend</span>
+                <span className="text-[10px] text-slate-500">Standard 90° Directional Turn</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="horizontal_elbow_45" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-amber-50/50 border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="horizontal_elbow_45" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs text-slate-900">45° Flat Bend</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800 border-amber-300 font-bold">
+                    Qty: 2× Pair
+                  </Badge>
+                </div>
+                <span className="text-[10px] text-slate-500">Smooth 45° Sweep Turn (2 pcs per offset)</span>
+              </div>
+            </div>
+          </SelectItem>
+        </SelectGroup>
+
+        <SelectSeparator />
+
+        <SelectGroup>
+          <SelectLabel>Vertical Risers &amp; Offsets</SelectLabel>
+          <SelectItem value="vertical_inside_riser" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="vertical_inside_riser" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">90° Inside Riser (Upward)</span>
+                <span className="text-[10px] text-slate-500">Vertical 90° bend to higher level</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="vertical_outside_riser" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="vertical_outside_riser" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">90° Outside Riser (Downward)</span>
+                <span className="text-[10px] text-slate-500">Vertical 90° bend to lower level</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="vertical_inside_riser_45" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-amber-50/50 border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="vertical_inside_riser_45" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs text-slate-900">45° Inside Riser (Upward)</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800 border-amber-300 font-bold">
+                    Qty: 2× Pair
+                  </Badge>
+                </div>
+                <span className="text-[10px] text-slate-500">Gentle vertical riser jog (2 pcs per offset)</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="vertical_outside_riser_45" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-amber-50/50 border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="vertical_outside_riser_45" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs text-slate-900">45° Outside Riser (Downward)</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800 border-amber-300 font-bold">
+                    Qty: 2× Pair
+                  </Badge>
+                </div>
+                <span className="text-[10px] text-slate-500">Gentle vertical drop jog (2 pcs per offset)</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="skewed_downward_bend" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="skewed_downward_bend" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Right Downward Skewed Bend</span>
+                <span className="text-[10px] text-slate-500">3D compound turn &amp; drop</span>
+              </div>
+            </div>
+          </SelectItem>
+        </SelectGroup>
+
+        <SelectSeparator />
+
+        <SelectGroup>
+          <SelectLabel>Terminations &amp; Drops</SelectLabel>
+          <SelectItem value="electrical_board_outlet" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="electrical_board_outlet" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Electrical Board Outlet</span>
+                <span className="text-[10px] text-slate-500">Cabinet entry flanged drop collar</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="straight_coupler" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="straight_coupler" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Straight Splice Coupler</span>
+                <span className="text-[10px] text-slate-500">In-line splice connector plates</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="closed_bend" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="closed_bend" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Closed Bend</span>
+                <span className="text-[10px] text-slate-500">Terminal 90° sealed termination</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="end_cap" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="end_cap" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">End Cap / Terminal Drop</span>
+                <span className="text-[10px] text-slate-500">Blanking plate / conduit drop</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="none" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="none" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">None / Pass-Through</span>
+                <span className="text-[10px] text-slate-500">Continuous straight tray run</span>
+              </div>
+            </div>
+          </SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+};
+
+/**
+ * Rich Dropdown Selector for Cable Tray Reducers featuring SVGs in the trigger and menu.
+ */
+export const ReducerSelectDropdown: React.FC<{
+  value: ReducerType;
+  onChange: (value: ReducerType) => void;
+  disabled?: boolean;
+  className?: string;
+}> = ({ value, onChange, disabled, className = '' }) => {
+  const meta = REDUCER_CATALOG_REGISTRY[value] || REDUCER_CATALOG_REGISTRY.concentric;
+
+  return (
+    <Select value={value} onValueChange={val => onChange(val as ReducerType)} disabled={disabled}>
+      <SelectTrigger
+        className={`h-7 px-2 text-[11px] font-semibold bg-white border-slate-200 hover:border-amber-400 focus:ring-1 focus:ring-amber-500 rounded ${className}`}
+      >
+        <div className="flex items-center gap-1.5 overflow-hidden text-left flex-1 min-w-0">
+          <div className="w-4 h-4 rounded bg-white border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+            <ReducerIllustration type={value} size={14} />
+          </div>
+          <span className="truncate">{meta.apvName}</span>
+        </div>
+      </SelectTrigger>
+
+      <SelectContent className="w-64 p-1 bg-white border-slate-200 shadow-xl">
+        <SelectItem value="concentric" className="py-1.5 cursor-pointer">
+          <div className="flex items-center gap-2 w-full">
+            <div className="w-7 h-7 rounded bg-white border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+              <ReducerIllustration type="concentric" size={24} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-xs text-slate-900">Reducer (Concentric)</span>
+              <span className="text-[10px] text-slate-500">Symmetric Centerline</span>
+            </div>
+          </div>
+        </SelectItem>
+
+        <SelectItem value="eccentric_left" className="py-1.5 cursor-pointer">
+          <div className="flex items-center gap-2 w-full">
+            <div className="w-7 h-7 rounded bg-white border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+              <ReducerIllustration type="eccentric_left" size={24} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-xs text-slate-900">Left Reducer</span>
+              <span className="text-[10px] text-slate-500">Flat Straight Left Rail</span>
+            </div>
+          </div>
+        </SelectItem>
+
+        <SelectItem value="eccentric_right" className="py-1.5 cursor-pointer">
+          <div className="flex items-center gap-2 w-full">
+            <div className="w-7 h-7 rounded bg-white border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+              <ReducerIllustration type="eccentric_right" size={24} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-xs text-slate-900">Right Reducer</span>
+              <span className="text-[10px] text-slate-500">Flat Straight Right Rail</span>
+            </div>
+          </div>
+        </SelectItem>
+
+        <SelectItem value="height_reducer" className="py-1.5 cursor-pointer">
+          <div className="flex items-center gap-2 w-full">
+            <div className="w-7 h-7 rounded bg-white border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+              <ReducerIllustration type="height_reducer" size={24} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-xs text-slate-900">Height Reducer</span>
+              <span className="text-[10px] text-slate-500">Flange Depth Step-Down</span>
+            </div>
+          </div>
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  );
+};
+
 
