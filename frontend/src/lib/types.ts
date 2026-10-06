@@ -6,16 +6,23 @@ export type BranchOrientation = 'horizontal' | 'vertical';
 
 export type FittingType =
   | 'horizontal_tee'
+  | 'horizontal_half_tee'
   | 'horizontal_elbow_90'
   | 'horizontal_elbow_45'
   | 'horizontal_cross'
   | 'vertical_inside_riser'
   | 'vertical_outside_riser'
+  | 'vertical_inside_riser_45'
+  | 'vertical_outside_riser_45'
+  | 'vertical_downward_tee'
+  | 'skewed_downward_bend'
+  | 'electrical_board_outlet'
   | 'straight_coupler'
+  | 'closed_bend'
   | 'end_cap'
   | 'none';
 
-export type ReducerType = 'concentric' | 'eccentric_left' | 'eccentric_right';
+export type ReducerType = 'concentric' | 'eccentric_left' | 'eccentric_right' | 'height_reducer';
 
 export interface NodePortReducer {
   branch_id: string;
@@ -31,6 +38,7 @@ export interface NodeFittingConfig {
   fitting_type?: FittingType;
   user_override?: boolean;
   notes?: string;
+  include_cover?: boolean;
   reducers?: Record<string, NodePortReducer>; // keyed by branch_id
 }
 
@@ -55,6 +63,7 @@ export interface CalculatedNodeFitting {
   width_mm: number; // adapted to max branch width
   height_mm: number;
   reducers: Record<string, NodePortReducer>;
+  include_cover?: boolean;
   notes?: string;
 }
 

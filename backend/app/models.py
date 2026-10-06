@@ -24,12 +24,19 @@ class BranchStatus(str, Enum):
 
 class FittingType(str, Enum):
     HORIZONTAL_TEE = "horizontal_tee"
+    HORIZONTAL_HALF_TEE = "horizontal_half_tee"
     HORIZONTAL_ELBOW_90 = "horizontal_elbow_90"
     HORIZONTAL_ELBOW_45 = "horizontal_elbow_45"
     HORIZONTAL_CROSS = "horizontal_cross"
     VERTICAL_INSIDE_RISER = "vertical_inside_riser"
     VERTICAL_OUTSIDE_RISER = "vertical_outside_riser"
+    VERTICAL_INSIDE_RISER_45 = "vertical_inside_riser_45"
+    VERTICAL_OUTSIDE_RISER_45 = "vertical_outside_riser_45"
+    VERTICAL_DOWNWARD_TEE = "vertical_downward_tee"
+    SKEWED_DOWNWARD_BEND = "skewed_downward_bend"
+    ELECTRICAL_BOARD_OUTLET = "electrical_board_outlet"
     STRAIGHT_COUPLER = "straight_coupler"
+    CLOSED_BEND = "closed_bend"
     END_CAP = "end_cap"
     NONE = "none"
 
@@ -38,6 +45,7 @@ class ReducerType(str, Enum):
     CONCENTRIC = "concentric"
     ECCENTRIC_LEFT = "eccentric_left"
     ECCENTRIC_RIGHT = "eccentric_right"
+    HEIGHT_REDUCER = "height_reducer"
 
 
 class NodePortReducer(BaseModel):
@@ -54,6 +62,7 @@ class NodeFittingConfig(BaseModel):
     fitting_type: Optional[str] = None
     user_override: bool = False
     notes: Optional[str] = None
+    include_cover: bool = False
     reducers: Dict[str, NodePortReducer] = Field(default_factory=dict)
 
 
@@ -78,6 +87,7 @@ class CalculatedNodeFitting(BaseModel):
     width_mm: int
     height_mm: float
     reducers: Dict[str, NodePortReducer] = Field(default_factory=dict)
+    include_cover: bool = False
     notes: Optional[str] = None
 
 

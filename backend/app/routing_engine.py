@@ -30,13 +30,20 @@ from .models import (
 from .cable_catalog import lookup_catalog_cable_od
 
 FITTING_TYPE_NAMES = {
-    "horizontal_tee": "Horizontal Tee (T-Piece)",
-    "horizontal_elbow_90": "Horizontal 90° Elbow",
-    "horizontal_elbow_45": "Horizontal 45° Elbow",
-    "horizontal_cross": "Horizontal 4-Way Cross",
-    "vertical_inside_riser": "Vertical Inside Riser Bend",
-    "vertical_outside_riser": "Vertical Outside Riser Bend",
+    "horizontal_tee": "Equal Tee (Horizontal Tee)",
+    "horizontal_half_tee": "Half Equal Tee (Offset Branch)",
+    "horizontal_cross": "Crosspiece (4-Way Cross)",
+    "horizontal_elbow_90": "90° Flat Bend (Horizontal 90°)",
+    "horizontal_elbow_45": "45° Flat Bend (Horizontal 45°)",
+    "vertical_inside_riser": "90° Inside Riser Bend (Upward)",
+    "vertical_outside_riser": "90° Outside Riser Bend (Downward)",
+    "vertical_inside_riser_45": "45° Inside Riser Bend (Upward)",
+    "vertical_outside_riser_45": "45° Outside Riser Bend (Downward)",
+    "vertical_downward_tee": "Vertical Downward Skewed Tee",
+    "skewed_downward_bend": "Right Downward Skewed Bend",
+    "electrical_board_outlet": "Electrical Board Outlet / Drop Flange",
     "straight_coupler": "Straight Splice Coupler",
+    "closed_bend": "Closed Bend / Terminal End",
     "end_cap": "End Cap / Terminal Drop",
     "none": "None / Pass-Through",
 }

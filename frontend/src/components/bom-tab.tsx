@@ -18,6 +18,7 @@ import {
   GitBranch,
   ArrowRightLeft,
 } from 'lucide-react';
+import { FittingIllustration, ReducerIllustration } from '@/components/fitting-illustrations';
 
 interface BomTabProps {
   bom: BillOfMaterials | null | undefined;
@@ -251,9 +252,11 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
                 <tbody className="divide-y divide-slate-100">
                   {bom.fittings.map((fit, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/70">
-                      <td className="p-2.5 font-bold text-slate-900 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
-                        {fit.fitting_name}
+                      <td className="p-2.5 font-bold text-slate-900 flex items-center gap-2">
+                        <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                          <FittingIllustration type={fit.fitting_type} size={28} />
+                        </div>
+                        <span>{fit.fitting_name}</span>
                       </td>
                       <td className="p-2.5 font-mono font-semibold text-slate-700">
                         {fit.width_mm} &times; {fit.height_mm} mm
@@ -305,9 +308,11 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {bom.reducers.map((red, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/70">
-                      <td className="p-2.5 font-bold text-amber-900 flex items-center gap-1.5">
-                        <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600" />
-                        {red.from_width_mm} mm &rarr; {red.to_width_mm} mm
+                      <td className="p-2.5 font-bold text-amber-900 flex items-center gap-2">
+                        <div className="w-8 h-8 rounded bg-white border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                          <ReducerIllustration type={red.reducer_type} size={26} />
+                        </div>
+                        <span>{red.from_width_mm} mm &rarr; {red.to_width_mm} mm</span>
                       </td>
                       <td className="p-2.5 font-mono text-slate-600">{red.height_mm} mm</td>
                       <td className="p-2.5">
