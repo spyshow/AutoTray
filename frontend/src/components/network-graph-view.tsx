@@ -1,10 +1,18 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Branch, BranchSizingResult, Cable } from '@/lib/types';
+import { Branch, BranchSizingResult, Cable, CableRoutedDetail } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Layers,
   Activity,
@@ -17,6 +25,10 @@ import {
   Filter,
   FolderOpen,
   FolderClosed,
+  Cable as CableIcon,
+  Search,
+  ChevronDown,
+  ChevronUp,
   X,
 } from 'lucide-react';
 
@@ -60,6 +72,8 @@ export function NetworkGraphView({ branches, results, cables }: NetworkGraphView
   const [activeLevelFilter, setActiveLevelFilter] = useState<string>('all');
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
   const [zoom, setZoom] = useState<number>(1.0);
+  const [cableSearchQuery, setCableSearchQuery] = useState<string>('');
+  const [isCablesExpanded, setIsCablesExpanded] = useState<boolean>(true);
 
   // Toggle collapse/expand of a node
   const toggleNodeCollapse = (nodeId: string) => {
@@ -348,6 +362,46 @@ export function NetworkGraphView({ branches, results, cables }: NetworkGraphView
   const selectedResult = selectedBranchId ? resultsMap.get(selectedBranchId) : null;
   const selectedBranch = selectedBranchId ? branches.find(b => b.branch_id === selectedBranchId) : null;
 
+  // Extract cables routed through selected branch
+  const routedCables: CableRoutedDetail[] = useMemo(() => {
+    if (!selectedResult) return [];
+    if (selectedResult.cables_detail && selectedResult.cables_detail.length > 0) {
+      return selectedResult.cables_detail;
+    }
+    if (selectedResult.cables_routed && selectedResult.cables_routed.length > 0) {
+      const map = new Map<string, Cable>();
+      cables.forEach(c => map.set(c.cable_tag, c));
+      return selectedResult.cables_routed.map(tag => {
+        const c = map.get(tag);
+        return {
+          cable_tag: tag,
+          source_node: c?.source_node || '',
+          dest_node: c?.dest_node || '',
+          cable_type: c?.cable_type || '',
+          od_mm: c?.od_mm || 0,
+          count: c?.count || 1,
+          width_contribution_mm: 0,
+          source_panel: c?.source_panel,
+          dest_panel: c?.dest_panel,
+        };
+      });
+    }
+    return [];
+  }, [selectedResult, cables]);
+
+  const filteredRoutedCables = useMemo(() => {
+    if (!cableSearchQuery.trim()) return routedCables;
+    const q = cableSearchQuery.trim().toLowerCase();
+    return routedCables.filter(c =>
+      c.cable_tag.toLowerCase().includes(q) ||
+      c.cable_type.toLowerCase().includes(q) ||
+      c.source_node.toLowerCase().includes(q) ||
+      c.dest_node.toLowerCase().includes(q) ||
+      (c.source_panel && c.source_panel.toLowerCase().includes(q)) ||
+      (c.dest_panel && c.dest_panel.toLowerCase().includes(q))
+    );
+  }, [routedCables, cableSearchQuery]);
+
   if (!branches || branches.length === 0) {
     return (
       <Card className="border-slate-200 bg-white shadow-sm p-8 text-center">
@@ -514,59 +568,85 @@ export function NetworkGraphView({ branches, results, cables }: NetworkGraphView
                 </defs>
 
                 {/* Level Elevation Background Bands */}
-                {levelBands.map((band, idx) => (
-                  <g key={idx}>
-                    <rect
-                      x="20"
-                      y={band.yStart}
-                      width={svgWidth - 40}
-                      height={band.height}
-                      rx="12"
-                      fill={band.color}
-                      stroke={band.borderColor}
-                      strokeWidth="1.5"
-                    />
-                    <rect
-                      x="20"
-                      y={band.yStart}
-                      width={svgWidth - 40}
-                      height={band.height}
-                      rx="12"
-                      fill="url(#dotGrid)"
-                    />
-                    {/* Level Header Strip */}
-                    <rect
-                      x="28"
-                      y={band.yStart + 12}
-                      width={Math.max(160, band.name.length * 9 + 130)}
-                      height="26"
-                      rx="6"
-                      fill="#FFFFFF"
-                      stroke="#E2E8F0"
-                      strokeWidth="1"
-                      className="shadow-sm"
-                    />
-                    <text
-                      x="40"
-                      y={band.yStart + 29}
-                      fill="#1E293B"
-                      fontSize="12"
-                      fontWeight="bold"
-                      className="font-mono tracking-wide"
-                    >
-                      {band.name}
-                    </text>
-                    <text
-                      x={Math.max(160, band.name.length * 9 + 130) + 15}
-                      y={band.yStart + 29}
-                      fill="#64748B"
-                      fontSize="11"
-                      fontWeight="500"
-                    >
-                      {band.branchCount} segments • {band.nodeCount} nodes
-                    </text>
-                  </g>
-                ))}
+                {levelBands.map((band, idx) => {
+                  const statsText = `${band.branchCount} segments • ${band.nodeCount} nodes`;
+                  const nameWidth = Math.max(72, Math.round(band.name.length * 8.5 + 20));
+                  const statsWidth = Math.round(statsText.length * 6.8 + 20);
+                  const totalPillWidth = nameWidth + statsWidth + 18;
+                  const startX = 30;
+                  const chipX = startX + 3;
+
+                  return (
+                    <g key={idx}>
+                      <rect
+                        x="20"
+                        y={band.yStart}
+                        width={svgWidth - 40}
+                        height={band.height}
+                        rx="12"
+                        fill={band.color}
+                        stroke={band.borderColor}
+                        strokeWidth="1.5"
+                      />
+                      <rect
+                        x="20"
+                        y={band.yStart}
+                        width={svgWidth - 40}
+                        height={band.height}
+                        rx="12"
+                        fill="url(#dotGrid)"
+                      />
+
+                      {/* Unified Level Header Pill */}
+                      <rect
+                        x={startX}
+                        y={band.yStart + 12}
+                        width={totalPillWidth}
+                        height="28"
+                        rx="7"
+                        fill="#FFFFFF"
+                        stroke="#CBD5E1"
+                        strokeWidth="1"
+                        className="shadow-2xs"
+                      />
+
+                      {/* Level Name Tag Pill */}
+                      <rect
+                        x={chipX}
+                        y={band.yStart + 15}
+                        width={nameWidth}
+                        height="22"
+                        rx="5"
+                        fill="#F1F5F9"
+                        stroke="#E2E8F0"
+                        strokeWidth="0.5"
+                      />
+                      <text
+                        x={chipX + nameWidth / 2}
+                        y={band.yStart + 30}
+                        textAnchor="middle"
+                        fill="#0F172A"
+                        fontSize="11.5"
+                        fontWeight="bold"
+                        className="font-mono tracking-wide select-none"
+                      >
+                        {band.name}
+                      </text>
+
+                      {/* Segments and Nodes Count Stats */}
+                      <text
+                        x={chipX + nameWidth + 10}
+                        y={band.yStart + 30}
+                        fill="#64748B"
+                        fontSize="11"
+                        fontWeight="500"
+                        className="select-none"
+                      >
+                        {statsText}
+                      </text>
+                    </g>
+                  );
+                })}
 
                 {/* Draw Mind Map Branches (Curved Bezier Edges) */}
                 {branches.map(b => {
@@ -769,64 +849,167 @@ export function NetworkGraphView({ branches, results, cables }: NetworkGraphView
 
           {/* Selected Branch Inspection Drawer */}
           {selectedBranch && (
-            <div className="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative animate-in fade-in-50 duration-200">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-sm text-slate-900">
-                    Segment: {selectedBranch.branch_id}
-                  </span>
-                  <Badge variant={selectedBranch.branch_type === 'vertical' ? 'riser' : 'secondary'} className="text-[10px]">
-                    {selectedBranch.branch_type.toUpperCase()} ({selectedBranch.level})
-                  </Badge>
-                  {selectedResult && (
-                    <Badge variant={selectedResult.status === 'OK' ? 'success' : 'destructive'} className="text-[10px]">
-                      {selectedResult.status}
+            <div className="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-3.5 relative animate-in fade-in-50 duration-200 shadow-sm">
+              {/* Top Row: Segment Metadata & KPIs */}
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pr-8">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-sm text-slate-900">
+                      Segment: {selectedBranch.branch_id}
+                    </span>
+                    <Badge variant={selectedBranch.branch_type === 'vertical' ? 'riser' : 'secondary'} className="text-[10px]">
+                      {selectedBranch.branch_type.toUpperCase()} ({selectedBranch.level})
                     </Badge>
-                  )}
+                    {selectedResult && (
+                      <Badge variant={selectedResult.status === 'OK' ? 'success' : 'destructive'} className="text-[10px]">
+                        {selectedResult.status}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    Span: <span className="font-semibold text-slate-900 font-mono">{selectedBranch.node_from}</span> ➔ <span className="font-semibold text-slate-900 font-mono">{selectedBranch.node_to}</span> ({selectedBranch.length_m} m length)
+                  </p>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Span: <span className="font-semibold text-slate-900 font-mono">{selectedBranch.node_from}</span> ➔ <span className="font-semibold text-slate-900 font-mono">{selectedBranch.node_to}</span> ({selectedBranch.length_m} m length)
-                </p>
+
+                {selectedResult ? (
+                  <div className="flex flex-wrap items-center gap-6 text-xs">
+                    <div>
+                      <span className="text-slate-500 block">Cables Routed:</span>
+                      <span className="font-bold text-slate-800 text-sm">{selectedResult.cable_count}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Calculated Width:</span>
+                      <span className="font-bold text-slate-800 text-sm font-mono">{selectedResult.calculated_width_mm} mm</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Commercial Tray:</span>
+                      <span className="font-bold text-blue-600 text-sm font-mono">W: {selectedResult.recommended_commercial_width_mm} mm</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Fill Ratio:</span>
+                      <span className={`font-bold text-sm font-mono ${
+                        selectedResult.fill_ratio_pct > 90 ? 'text-red-600' : 'text-emerald-600'
+                      }`}>
+                        {selectedResult.fill_ratio_pct}%
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500 italic">
+                    Run calculation engine to view sizing for this segment.
+                  </div>
+                )}
               </div>
 
-              {selectedResult ? (
-                <div className="flex flex-wrap items-center gap-6 text-xs">
-                  <div>
-                    <span className="text-slate-500 block">Cables Routed:</span>
-                    <span className="font-bold text-slate-800 text-sm">{selectedResult.cable_count}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block">Calculated Width:</span>
-                    <span className="font-bold text-slate-800 text-sm font-mono">{selectedResult.calculated_width_mm} mm</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block">Commercial Tray:</span>
-                    <span className="font-bold text-blue-600 text-sm font-mono">W: {selectedResult.recommended_commercial_width_mm} mm</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block">Fill Ratio:</span>
-                    <span className={`font-bold text-sm font-mono ${
-                      selectedResult.fill_ratio_pct > 90 ? 'text-red-600' : 'text-emerald-600'
-                    }`}>
-                      {selectedResult.fill_ratio_pct}%
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-slate-500 italic">
-                  Run calculation engine to view sizing for this segment.
-                </div>
-              )}
-
+              {/* Close Button */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-slate-400 hover:text-slate-700 absolute top-2 right-2 md:static"
+                className="h-7 w-7 p-0 text-slate-400 hover:text-slate-700 absolute top-3 right-3"
                 onClick={() => setSelectedBranchId(null)}
                 title="Close Inspector"
               >
                 <X className="h-4 w-4" />
               </Button>
+
+              {/* Routed Cables Section */}
+              {selectedResult && (
+                <div className="pt-3 border-t border-slate-200/80 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-blue-600 transition-colors cursor-pointer"
+                      onClick={() => setIsCablesExpanded(prev => !prev)}
+                    >
+                      <CableIcon className="h-4 w-4 text-blue-600" />
+                      <span>Cables in this Segment ({routedCables.length})</span>
+                      {isCablesExpanded ? (
+                        <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                      )}
+                    </button>
+
+                    {isCablesExpanded && routedCables.length > 3 && (
+                      <div className="relative w-full sm:w-56">
+                        <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={cableSearchQuery}
+                          onChange={e => setCableSearchQuery(e.target.value)}
+                          placeholder="Search cable tag / type..."
+                          className="h-7 w-full pl-8 pr-2.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 placeholder:text-slate-400 shadow-2xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {isCablesExpanded && (
+                    routedCables.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic py-2">
+                        No cables currently routed through this tray segment.
+                      </p>
+                    ) : (
+                      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                        <div className="max-h-60 overflow-y-auto">
+                          <Table className="text-xs">
+                            <TableHeader className="bg-slate-100/90 sticky top-0 z-10">
+                              <TableRow className="border-b border-slate-200">
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 pl-3">Cable Tag</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5">Type / Specification</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-right">OD</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-center">Qty</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5">Full Cable Span</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5">Equipment / Panels</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-right pr-3">Width Footprint</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredRoutedCables.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={7} className="text-center py-4 text-xs text-slate-500">
+                                    No cables match "{cableSearchQuery}"
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                filteredRoutedCables.map((c, idx) => (
+                                  <TableRow key={c.cable_tag || idx} className="hover:bg-blue-50/40 border-b border-slate-100 last:border-0">
+                                    <TableCell className="font-mono font-bold text-blue-600 py-1.5 pl-3">
+                                      {c.cable_tag}
+                                    </TableCell>
+                                    <TableCell className="text-slate-800 py-1.5 font-medium">
+                                      {c.cable_type || '-'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-right text-slate-700 py-1.5">
+                                      {c.od_mm ? `${c.od_mm} mm` : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-center font-mono text-slate-700 py-1.5">
+                                      {c.count}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-slate-600 py-1.5">
+                                      {c.source_node} ➔ {c.dest_node}
+                                    </TableCell>
+                                    <TableCell className="text-slate-600 py-1.5 text-[11px]">
+                                      {c.source_panel || c.dest_panel ? (
+                                        <span>{c.source_panel || '-'} ➔ {c.dest_panel || '-'}</span>
+                                      ) : (
+                                        <span className="text-slate-400 italic">None</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-right font-semibold text-slate-800 py-1.5 pr-3">
+                                      {c.width_contribution_mm ? `${c.width_contribution_mm} mm` : '-'}
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>

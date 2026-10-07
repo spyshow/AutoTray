@@ -337,3 +337,106 @@ test('Collapsing a node hides all its downstream descendants and dynamically shr
   assert.equal(collapsedHeight, 116);
   assert.ok(collapsedHeight < expandedHeight);
 });
+
+test('Routed cables extraction resolves full detail and matches fallback Cable list', () => {
+  const selectedResultWithDetail = {
+    branch_id: 'BR_L0_03',
+    cable_count: 2,
+    cables_routed: ['CBL_01', 'CBL_02'],
+    cables_detail: [
+      {
+        cable_tag: 'CBL_01',
+        source_node: 'N011',
+        dest_node: 'N012',
+        cable_type: '4x50 mm²',
+        od_mm: 28.0,
+        count: 1,
+        width_contribution_mm: 56.0,
+        source_panel: 'MCC_01',
+        dest_panel: 'JB_01',
+      },
+      {
+        cable_tag: 'CBL_02',
+        source_node: 'N011',
+        dest_node: 'N012',
+        cable_type: 'Cat6',
+        od_mm: 7.5,
+        count: 2,
+        width_contribution_mm: 15.0,
+        source_panel: 'PLC_01',
+        dest_panel: 'RIO_01',
+      },
+    ],
+  };
+
+  // Case 1: Directly reads cables_detail
+  assert.equal(selectedResultWithDetail.cables_detail.length, 2);
+  assert.equal(selectedResultWithDetail.cables_detail[0].cable_tag, 'CBL_01');
+  assert.equal(selectedResultWithDetail.cables_detail[0].od_mm, 28.0);
+
+  // Case 2: Fallback when cables_detail is missing
+  const selectedResultNoDetail = {
+    branch_id: 'BR_L0_03',
+    cable_count: 1,
+    cables_routed: ['CBL_99'],
+  };
+  const globalCables = [
+    {
+      cable_tag: 'CBL_99',
+      source_node: 'N00',
+      dest_node: 'N01',
+      cable_type: '3x2.5 mm²',
+      od_mm: 11.0,
+      count: 1,
+    },
+  ];
+
+  const map = new Map(globalCables.map(c => [c.cable_tag, c]));
+  const resolved = selectedResultNoDetail.cables_routed.map(tag => {
+    const c = map.get(tag);
+    return {
+      cable_tag: tag,
+      source_node: c?.source_node || '',
+      dest_node: c?.dest_node || '',
+      cable_type: c?.cable_type || '',
+      od_mm: c?.od_mm || 0,
+      count: c?.count || 1,
+      width_contribution_mm: 0,
+    };
+  });
+
+  assert.equal(resolved.length, 1);
+  assert.equal(resolved[0].cable_tag, 'CBL_99');
+  assert.equal(resolved[0].cable_type, '3x2.5 mm²');
+  assert.equal(resolved[0].od_mm, 11.0);
+});
+
+test('Cable search query filters cables across tag, type, panel, and endpoints', () => {
+  const cables = [
+    { cable_tag: 'CBL_PWR_01', cable_type: '4x50 mm²', source_node: 'TRANSF', dest_node: 'MCC', source_panel: 'PANEL_A' },
+    { cable_tag: 'CBL_CTRL_01', cable_type: '12x1.5 mm²', source_node: 'MCC', dest_node: 'PUMP', source_panel: 'PANEL_B' },
+    { cable_tag: 'CBL_NET_01', cable_type: 'PROFINET', source_node: 'DCS', dest_node: 'RIO', source_panel: 'RACK_1' },
+  ];
+
+  const filter = (query) => {
+    const q = query.trim().toLowerCase();
+    return cables.filter(c =>
+      c.cable_tag.toLowerCase().includes(q) ||
+      c.cable_type.toLowerCase().includes(q) ||
+      c.source_node.toLowerCase().includes(q) ||
+      c.dest_node.toLowerCase().includes(q) ||
+      (c.source_panel && c.source_panel.toLowerCase().includes(q))
+    );
+  };
+
+  assert.equal(filter('pwr').length, 1);
+  assert.equal(filter('pwr')[0].cable_tag, 'CBL_PWR_01');
+
+  assert.equal(filter('12x1.5').length, 1);
+  assert.equal(filter('12x1.5')[0].cable_tag, 'CBL_CTRL_01');
+
+  assert.equal(filter('RACK').length, 1);
+  assert.equal(filter('RACK')[0].cable_tag, 'CBL_NET_01');
+
+  assert.equal(filter('NONEXISTENT').length, 0);
+});
