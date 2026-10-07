@@ -506,3 +506,29 @@ test('Cable search query filters cables across tag, type, panel, and endpoints',
 
   assert.equal(filter('NONEXISTENT').length, 0);
 });
+
+test('Table Row ID generator: Guarantees unique keys even with duplicate tags or IDs', () => {
+  const getCableRowId = (row, index) => `${row.cable_tag || 'cable'}_${index}`;
+  const getBranchRowId = (row, index) => `${row.branch_id || 'branch'}_${index}`;
+
+  const duplicateCables = [
+    { cable_tag: '=GEN-1W001', cable_type: '1x240' },
+    { cable_tag: '=GEN-1W001', cable_type: '1x240' },
+    { cable_tag: '=GEN-1W001', cable_type: '1x240' },
+  ];
+
+  const cableRowIds = duplicateCables.map((c, idx) => getCableRowId(c, idx));
+  assert.equal(cableRowIds.length, 3);
+  assert.equal(new Set(cableRowIds).size, 3, 'All cable row IDs must be strictly unique');
+  assert.deepEqual(cableRowIds, ['=GEN-1W001_0', '=GEN-1W001_1', '=GEN-1W001_2']);
+
+  const duplicateBranches = [
+    { branch_id: 'BR_01', length_m: 5 },
+    { branch_id: 'BR_01', length_m: 10 },
+  ];
+
+  const branchRowIds = duplicateBranches.map((b, idx) => getBranchRowId(b, idx));
+  assert.equal(branchRowIds.length, 2);
+  assert.equal(new Set(branchRowIds).size, 2, 'All branch row IDs must be strictly unique');
+  assert.deepEqual(branchRowIds, ['BR_01_0', 'BR_01_1']);
+});

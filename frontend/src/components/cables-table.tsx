@@ -880,7 +880,7 @@ export function CablesTable({
   const table = useReactTable({
     data: filteredCables,
     columns,
-    getRowId: (row, index) => row.cable_tag || `cable_${index}`,
+    getRowId: (row, index) => `${row.cable_tag || 'cable'}_${index}`,
     state: { sorting, pagination },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,

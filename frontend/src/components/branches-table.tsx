@@ -572,7 +572,7 @@ export function BranchesTable({
   const table = useReactTable({
     data: filteredBranches,
     columns,
-    getRowId: (row, index) => row.branch_id || `branch_${index}`,
+    getRowId: (row, index) => `${row.branch_id || 'branch'}_${index}`,
     state: { sorting, pagination },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
