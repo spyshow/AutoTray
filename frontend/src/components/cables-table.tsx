@@ -10,6 +10,7 @@ import {
   ColumnDef,
   flexRender,
   SortingState,
+  PaginationState,
 } from '@tanstack/react-table';
 import { Cable, CableRoutingResult, Branch, CalculationParameters, CableCategory, CableFormation } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -151,7 +152,16 @@ export function CablesTable({
   const [globalFilter, setGlobalFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  // Reset page when search or type filter changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [globalFilter, typeFilter]);
 
   // Stable references to prevent columns useMemo recreation on every single keystroke
   const cablesRef = useRef(cables);
@@ -303,6 +313,14 @@ export function CablesTable({
     });
   }, [cables, typeFilter, globalFilter, devicePanelMap]);
 
+  // Guard against out-of-range page index when rows are deleted
+  useEffect(() => {
+    const maxPageIndex = Math.max(0, Math.ceil(filteredCables.length / pagination.pageSize) - 1);
+    if (pagination.pageIndex > maxPageIndex) {
+      setPagination(prev => ({ ...prev, pageIndex: maxPageIndex }));
+    }
+  }, [filteredCables.length, pagination.pageSize, pagination.pageIndex]);
+
   const isAllFilteredSelected =
     filteredCables.length > 0 &&
     filteredCables.every(c => selectedIndices.has(cables.indexOf(c)));
@@ -337,6 +355,13 @@ export function CablesTable({
       od_mm: 10.3,
       count: 1,
     });
+
+    // Keep user on the same page, or advance to the new page if on the last page and it was full
+    const currentTotal = filteredCables.length;
+    const isAtLastPage = pagination.pageIndex === Math.max(0, Math.ceil(currentTotal / pagination.pageSize) - 1);
+    if (isAtLastPage && currentTotal % pagination.pageSize === 0 && currentTotal > 0) {
+      setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
+    }
   };
 
   const columns = useMemo<ColumnDef<Cable>[]>(
@@ -847,15 +872,14 @@ export function CablesTable({
     data: filteredCables,
     columns,
     getRowId: (row, index) => row.cable_tag || `cable_${index}`,
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: { pageSize: 12 },
-    },
   });
 
   const missingSpecsCount = useMemo(() => {
@@ -1041,9 +1065,26 @@ export function CablesTable({
         </Table>
 
         {/* Pagination Bar */}
-        <div className="flex items-center justify-between p-3 border-t border-slate-200 bg-slate-50 text-xs">
-          <div className="text-slate-500">
-            Showing {table.getRowModel().rows.length} of {filteredCables.length} cables
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-slate-500">
+            <span>Showing {table.getRowModel().rows.length} of {filteredCables.length} cables</span>
+            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+              <span>Lines per page:</span>
+              <select
+                value={pagination.pageSize}
+                onChange={e => {
+                  const newSize = Number(e.target.value);
+                  setPagination({ pageIndex: 0, pageSize: newSize });
+                }}
+                className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                {[10, 20, 50, 100].map(size => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button

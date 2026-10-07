@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -12,6 +12,7 @@ import {
   flexRender,
   SortingState,
   ExpandedState,
+  PaginationState,
 } from '@tanstack/react-table';
 import { BranchSizingResult } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,6 +45,15 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  // Reset page when search or filters change
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [globalFilter, levelFilter, statusFilter]);
 
   const levels = useMemo(() => {
     const set = new Set(data.map(d => d.level));
@@ -65,6 +75,14 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
       );
     });
   }, [data, levelFilter, statusFilter, globalFilter]);
+
+  // Guard against out-of-range page index when rows shrink
+  useEffect(() => {
+    const maxPageIndex = Math.max(0, Math.ceil(filteredData.length / pagination.pageSize) - 1);
+    if (pagination.pageIndex > maxPageIndex) {
+      setPagination(prev => ({ ...prev, pageIndex: maxPageIndex }));
+    }
+  }, [filteredData.length, pagination.pageSize, pagination.pageIndex]);
 
   const columns = useMemo<ColumnDef<BranchSizingResult>[]>(
     () => [
@@ -293,20 +311,18 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
     state: {
       sorting,
       expanded,
+      pagination,
     },
     onSortingChange: setSorting,
     onExpandedChange: setExpanded,
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false,
     getRowCanExpand: row => (row.original.cables_detail?.length || 0) > 0 || (row.original.cables_routed?.length || 0) > 0,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
   });
 
   return (
@@ -518,9 +534,26 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
         </Table>
 
         {/* Pagination Bar */}
-        <div className="flex items-center justify-between p-3 border-t border-slate-200 bg-slate-50 text-xs">
-          <div className="text-slate-500">
-            Showing {table.getRowModel().rows.length} of {filteredData.length} branches
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-slate-500">
+            <span>Showing {table.getRowModel().rows.length} of {filteredData.length} branches</span>
+            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+              <span>Lines per page:</span>
+              <select
+                value={pagination.pageSize}
+                onChange={e => {
+                  const newSize = Number(e.target.value);
+                  setPagination({ pageIndex: 0, pageSize: newSize });
+                }}
+                className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                {[10, 20, 50, 100].map(size => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button

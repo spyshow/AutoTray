@@ -222,12 +222,19 @@ export function DefaultsSettingsTab({
     });
   }, [catalogItems, catalogCategory, catalogSearch]);
 
-  const pageSize = 12;
+  const [pageSize, setPageSize] = useState(10);
   const totalPages = Math.ceil(filteredCatalog.length / pageSize) || 1;
   const paginatedCatalog = useMemo(() => {
     const start = (catalogPage - 1) * pageSize;
     return filteredCatalog.slice(start, start + pageSize);
   }, [filteredCatalog, catalogPage]);
+
+  // Guard against out-of-range page when items are removed
+  useEffect(() => {
+    if (catalogPage > totalPages) {
+      setCatalogPage(totalPages);
+    }
+  }, [catalogPage, totalPages]);
 
   // Selection states
   const allFilteredSelected = useMemo(() => {
@@ -1403,6 +1410,23 @@ export function DefaultsSettingsTab({
                 ({selectedCatalogKeys.size} selected)
               </span>
             )}
+            <div className="inline-flex items-center gap-1.5 border-l border-slate-200 pl-3 ml-3">
+              <span>Lines per page:</span>
+              <select
+                value={pageSize}
+                onChange={e => {
+                  setPageSize(Number(e.target.value));
+                  setCatalogPage(1);
+                }}
+                className="h-6 px-1.5 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                {[10, 20, 50, 100].map(size => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-1">

@@ -10,8 +10,10 @@ import {
   ColumnDef,
   flexRender,
   SortingState,
+  PaginationState,
 } from '@tanstack/react-table';
 import { Branch, SupportMountingType } from '@/lib/types';
+import { incrementIdentifier } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -141,7 +143,16 @@ export function BranchesTable({
   const [levelFilter, setLevelFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  // Reset page when search or filters change
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [globalFilter, levelFilter, typeFilter]);
 
   // Stable references to prevent columns useMemo recreation on every keystroke
   const branchesRef = useRef(branches);
@@ -196,6 +207,14 @@ export function BranchesTable({
     });
   }, [branches, levelFilter, typeFilter, globalFilter]);
 
+  // Guard against out-of-range page index when rows are deleted
+  useEffect(() => {
+    const maxPageIndex = Math.max(0, Math.ceil(filteredBranches.length / pagination.pageSize) - 1);
+    if (pagination.pageIndex > maxPageIndex) {
+      setPagination(prev => ({ ...prev, pageIndex: maxPageIndex }));
+    }
+  }, [filteredBranches.length, pagination.pageSize, pagination.pageIndex]);
+
   const isAllFilteredSelected =
     filteredBranches.length > 0 &&
     filteredBranches.every(b => selectedIndices.has(branches.indexOf(b)));
@@ -219,17 +238,64 @@ export function BranchesTable({
   };
 
   const handleAddNew = () => {
-    const newIdx = branchesRef.current.length + 1;
-    onAddBranch({
-      branch_id: `BR_L1_${newIdx.toString().padStart(2, '0')}`,
-      node_from: `NODE_${newIdx}`,
-      node_to: `NODE_${newIdx + 1}`,
-      level: 'Level 1',
-      branch_type: 'horizontal',
-      length_m: 6.0,
-      tray_height_mm: defaultTrayHeightRef.current,
-      mounting_type: defaultMountingTypeRef.current || 'ceiling_trapeze',
-    });
+    const branchesList = branchesRef.current;
+    const lastBranch =
+      levelFilter !== 'ALL' && filteredBranches.length > 0
+        ? filteredBranches[filteredBranches.length - 1]
+        : branchesList.length > 0
+        ? branchesList[branchesList.length - 1]
+        : null;
+
+    if (lastBranch) {
+      // 1. Take the last Tray Segment ID and increment its number by 1 (ensuring uniqueness)
+      let nextBranchId = incrementIdentifier(lastBranch.branch_id);
+      const existingBranchIds = new Set(branchesList.map(b => b.branch_id.trim().toLowerCase()));
+      while (existingBranchIds.has(nextBranchId.trim().toLowerCase())) {
+        nextBranchId = incrementIdentifier(nextBranchId);
+      }
+
+      // 2. Use the last ToNode as FromNode
+      const nextNodeFrom = lastBranch.node_to || 'NODE_1';
+
+      // 3. Increment ToNode to propose the next node sequence
+      let nextNodeTo = incrementIdentifier(nextNodeFrom);
+      if (nextNodeTo.trim().toLowerCase() === nextNodeFrom.trim().toLowerCase()) {
+        nextNodeTo = `${nextNodeFrom}_NEXT`;
+      }
+
+      // 4. Use the same Elevation Level
+      const nextLevel = lastBranch.level || 'Level 1';
+
+      onAddBranch({
+        branch_id: nextBranchId,
+        node_from: nextNodeFrom,
+        node_to: nextNodeTo,
+        level: nextLevel,
+        branch_type: 'horizontal',
+        length_m: 6.0,
+        tray_height_mm: lastBranch.tray_height_mm ?? defaultTrayHeightRef.current,
+        mounting_type: lastBranch.mounting_type || defaultMountingTypeRef.current || 'ceiling_trapeze',
+      });
+    } else {
+      const newIdx = 1;
+      onAddBranch({
+        branch_id: `BR_L1_${newIdx.toString().padStart(2, '0')}`,
+        node_from: `NODE_${newIdx}`,
+        node_to: `NODE_${newIdx + 1}`,
+        level: 'Level 1',
+        branch_type: 'horizontal',
+        length_m: 6.0,
+        tray_height_mm: defaultTrayHeightRef.current,
+        mounting_type: defaultMountingTypeRef.current || 'ceiling_trapeze',
+      });
+    }
+
+    // Keep user on the same page, or advance to the new page if on the last page and it was full
+    const currentTotal = filteredBranches.length;
+    const isAtLastPage = pagination.pageIndex === Math.max(0, Math.ceil(currentTotal / pagination.pageSize) - 1);
+    if (isAtLastPage && currentTotal % pagination.pageSize === 0 && currentTotal > 0) {
+      setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
+    }
   };
 
   const columns = useMemo<ColumnDef<Branch>[]>(
@@ -498,15 +564,14 @@ export function BranchesTable({
     data: filteredBranches,
     columns,
     getRowId: (row, index) => row.branch_id || `branch_${index}`,
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: { pageSize: 12 },
-    },
   });
 
   return (
@@ -672,9 +737,26 @@ export function BranchesTable({
         </Table>
 
         {/* Pagination Bar */}
-        <div className="flex items-center justify-between p-3 border-t border-slate-200 bg-slate-50 text-xs">
-          <div className="text-slate-500">
-            Showing {table.getRowModel().rows.length} of {filteredBranches.length} segments
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-slate-500">
+            <span>Showing {table.getRowModel().rows.length} of {filteredBranches.length} segments</span>
+            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+              <span>Lines per page:</span>
+              <select
+                value={pagination.pageSize}
+                onChange={e => {
+                  const newSize = Number(e.target.value);
+                  setPagination({ pageIndex: 0, pageSize: newSize });
+                }}
+                className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              >
+                {[10, 20, 50, 100].map(size => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
