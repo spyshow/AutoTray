@@ -587,6 +587,7 @@ export default function AutoTrayRouterPage() {
           <TabsContent value="branches">
             <BranchesTable
               branches={branches}
+              cables={cables}
               defaultTrayHeight={parameters.default_tray_height_mm}
               defaultMountingType={parameters.default_mounting_type || 'ceiling_trapeze'}
               onUpdateBranch={handleUpdateBranch}

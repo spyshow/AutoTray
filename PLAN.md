@@ -1,48 +1,58 @@
-# PLAN: Sticky Table Header with Filter Toolbar & Add Branch Button
+# PLAN: Filterable Select Input (Combobox) for From Node & To Node from Cable List
 
 ## 1. Goal
-When scrolling down through rows in the **Branches & Risers** table (and **Cables Schedule** table), the top action toolbar (search box, level/type filter pills, "Add Branch / Riser" button, and bulk delete actions) along with the table column headers (`Tray Segment ID`, `From Node`, `To Node`, etc.) must remain pinned (sticky) at the top of the viewport directly below the top application navigation bar. This ensures that users scrolling down long lists never lose access to filters, action buttons, or column identifiers.
+When adding or editing cable tray branches in the **Branches & Risers** table, the "From Node" (`node_from`) and "To Node" (`node_to`) inputs should be a searchable/filterable select input (combobox). The selectable options must be dynamically populated from the cable list's "Source (From Node)" and "Destination (To Node)" (plus existing branch junction nodes). Users can type to filter options, pick an existing node with one click or Enter, or freely enter a custom node name. The same intelligent node completion is also made available to the **Cables Schedule** table for end-to-end consistency.
 
 ---
 
 ## 2. Technical Architecture & Analysis
-1. **Top Navbar Offset**:
-   - The top navigation bar `<HeaderConfig>` is already `sticky top-0 z-30` with height ~57-61px.
-   - We assign `id="app-header"` to `<HeaderConfig>` to dynamically observe its height via `ResizeObserver` or CSS variable `--app-header-height`.
-2. **Integrated Sticky Toolbar**:
-   - The action toolbar (search, level pills, orientation pills, Add Branch button) will be positioned sticky directly underneath `<HeaderConfig>` (`top: var(--app-header-height, 57px)`, `z-index: 20`).
-   - Background has high-contrast solid white with subtle backdrop blur (`bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-xs`) so scrolling rows pass smoothly behind it.
-3. **Sticky Column Headers (`TableHead`)**:
-   - The table column headers (`<th>`) will be positioned sticky directly below the action toolbar (`top: calc(var(--app-header-height, 57px) + var(--table-toolbar-height, 56px))`, `z-index: 10`).
-   - The toolbar height will be dynamically observed via `ResizeObserver` so responsive wrapping (e.g. pills wrapping to 2 lines) never overlaps or causes gaps.
-   - Ensure ancestor containers in `BranchesTable` and `Table` do not clip vertical overflow (`overflow: visible` on vertical axis) to allow native, GPU-accelerated window scrolling, while keeping horizontal responsiveness intact.
-4. **Consistency**:
-   - Apply the matching sticky header & toolbar pattern to `CablesTable` (`src/components/cables-table.tsx`).
+1. **Dynamic Node Options Collection**:
+   - In `BranchesTable`, derive `availableNodeOptions` from:
+     - `cables.flatMap(c => [c.source_node?.trim(), c.dest_node?.trim()])`
+     - `branches.flatMap(b => [b.node_from?.trim(), b.node_to?.trim()])`
+   - Filter out empty strings, normalize, deduplicate, and sort alphabetically with natural order.
+2. **Inline Filterable Combobox (`NodeComboboxCell`)**:
+   - Provide an input field that displays the current node value and preserves the table's clean look and feel.
+   - When focused or clicked, opens a floating dropdown listing matching node options filtered by user input.
+   - Displays a clean badge/counter (e.g., node name, tag).
+   - Allows keyboard navigation (ArrowUp, ArrowDown, Enter, Escape).
+   - Allows free-form typing so intermediate junction nodes (e.g. `J01`, `NODE_5`) not in the cable list can still be entered without limitation.
+   - Commits changes via `onSave(newValue)` when an item is selected or when blurred/submitted.
+3. **Data Flow**:
+   - Pass `cables={cables}` to `BranchesTable` in `frontend/src/app/page.tsx`.
+   - In `frontend/src/components/branches-table.tsx`, replace `EditableCellInput` for `node_from` and `node_to` with `NodeComboboxCell`.
+   - In `frontend/src/components/cables-table.tsx`, enhance `source_node` and `dest_node` with `NodeComboboxCell` while retaining existing validation alerts.
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 1: Update `HeaderConfig` with DOM Identifier & Observer
-- In `frontend/src/components/header-config.tsx`:
-  - Add `id="app-header"` to the root `<div className="... sticky top-0 z-30">`.
-- **Proof it works**: Inspecting DOM or reading element returns the header node with correct `offsetHeight`.
+### Step 1: Create `NodeComboboxCell` Component
+- Create `frontend/src/components/node-combobox-cell.tsx`:
+  - Input field with subtle dropdown toggle indicator (chevron).
+  - Floating portal/popover with z-index (`z-50`) to avoid clipping by table rows.
+  - Live filtering against `options: string[]`.
+  - Highlight matching substrings or show clean list.
+  - Keyboard accessibility (Arrow navigation, Enter selection, Escape dismiss).
+- **Proof it works**: Component renders, filters options correctly based on query, and invokes `onSave` when an option is clicked or typed.
 
-### Step 2: Implement Sticky Toolbar & Table Header in `BranchesTable`
+### Step 2: Update `page.tsx` & `BranchesTable`
+- In `frontend/src/app/page.tsx`:
+  - Pass `cables={cables}` to `<BranchesTable ... />`.
 - In `frontend/src/components/branches-table.tsx`:
-  - Add `ResizeObserver` hooks for `app-header` and `toolbarRef` to calculate `headerOffset` and `toolbarHeight`.
-  - Style the action toolbar with `sticky top-[${headerOffset}px] z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-xs`.
-  - Style the table card and `TableHeader` / `TableHead` so that each `TableHead` has `sticky top-[${headerOffset + toolbarHeight}px] z-10 bg-slate-100 border-b border-slate-200`.
-  - Remove parent `overflow-hidden` from the card wrapper that blocks window sticky positioning.
-- **Proof it works**: Scrolling down keeps the filter inputs, level buttons, Add Branch button, and column headers pinned at the top.
+  - Accept `cables?: Cable[]` in props.
+  - Derive `nodeOptions` using `useMemo` from `cables` and `branches`.
+  - Replace `EditableCellInput` for `node_from` and `node_to` columns with `<NodeComboboxCell value={...} options={nodeOptions} onSave={...} />`.
+- **Proof it works**: Loading cables or branches immediately populates the "From Node" and "To Node" combobox options with cable source and destination nodes.
 
-### Step 3: Implement Matching Sticky Pattern in `CablesTable`
+### Step 3: Enhance `CablesTable` Node Fields
 - In `frontend/src/components/cables-table.tsx`:
-  - Add matching dynamic sticky offsets for the cable toolbar (Search, Type filters, "Add Cable" button) and cable column headers.
-- **Proof it works**: Scrolling down the Cables table keeps the search, filters, "Add Cable" button, and column headers pinned.
+  - Derive `nodeOptions` from `branches` and `cables`.
+  - Use `NodeComboboxCell` for `source_node` and `dest_node` while preserving the validation warning icon (`AlertCircle`) and panel badge.
+- **Proof it works**: Editing cable endpoints in CablesTable allows selecting from known branch nodes.
 
 ### Step 4: Verification & Automated Tests
-- In `frontend/src/tests/`:
-  - Run existing test suites `npm test`.
-  - Run `npm run build` to verify Next.js compiles without type or lint errors.
-- **Proof it works**: All 101 unit tests pass and build succeeds cleanly.
+- Run `npm test` in `frontend` (all 101+ tests passing).
+- Run backend tests via `pytest` (all 45 tests passing).
+- Run `npm run build` in `frontend` to verify TypeScript types and production build.
+- **Proof it works**: Tests pass, build succeeds with 0 errors.

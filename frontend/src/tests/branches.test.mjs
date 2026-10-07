@@ -532,3 +532,71 @@ test('Table Row ID generator: Guarantees unique keys even with duplicate tags or
   assert.equal(new Set(branchRowIds).size, 2, 'All branch row IDs must be strictly unique');
   assert.deepEqual(branchRowIds, ['BR_01_0', 'BR_01_1']);
 });
+
+test('Node combobox options extractor: collects, deduplicates, and naturally sorts nodes from cable source & destination and branches', () => {
+  const extractNodeOptions = (cables = [], branches = []) => {
+    const set = new Set();
+    cables.forEach(c => {
+      const s = c.source_node?.trim();
+      const d = c.dest_node?.trim();
+      if (s) set.add(s);
+      if (d) set.add(d);
+    });
+    branches.forEach(b => {
+      const f = b.node_from?.trim();
+      const t = b.node_to?.trim();
+      if (f) set.add(f);
+      if (t) set.add(t);
+    });
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  };
+
+  const sampleCables = [
+    { cable_tag: 'C1', source_node: 'N022', dest_node: 'P111' },
+    { cable_tag: 'C2', source_node: 'N015', dest_node: 'P116' },
+    { cable_tag: 'C3', source_node: 'N011', dest_node: 'P112' },
+    { cable_tag: 'C4', source_node: 'N012', dest_node: 'P113' },
+    { cable_tag: 'C5', source_node: 'N012', dest_node: 'P114' }, // Duplicate N012
+    { cable_tag: 'C6', source_node: '  ', dest_node: 'MDB_1' }, // Empty whitespace source
+  ];
+
+  const sampleBranches = [
+    { branch_id: 'B1', node_from: 'N022', node_to: 'J01' },
+  ];
+
+  const options = extractNodeOptions(sampleCables, sampleBranches);
+
+  // Must include all unique endpoints from cables and branches
+  assert.ok(options.includes('N022'));
+  assert.ok(options.includes('N015'));
+  assert.ok(options.includes('N011'));
+  assert.ok(options.includes('N012'));
+  assert.ok(options.includes('P111'));
+  assert.ok(options.includes('P112'));
+  assert.ok(options.includes('P113'));
+  assert.ok(options.includes('P114'));
+  assert.ok(options.includes('P116'));
+  assert.ok(options.includes('MDB_1'));
+  assert.ok(options.includes('J01'));
+
+  // Must deduplicate N012 and N022
+  assert.equal(options.filter(o => o === 'N012').length, 1);
+  assert.equal(options.filter(o => o === 'N022').length, 1);
+
+  // Must filter options matching query "P11"
+  const filterNodes = (opts, query) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return opts;
+    return opts.filter(o => o.toLowerCase().includes(q));
+  };
+
+  const filteredP11 = filterNodes(options, 'P11');
+  assert.deepEqual(filteredP11, ['P111', 'P112', 'P113', 'P114', 'P116']);
+
+  // Case insensitive match "n01"
+  const filteredN01 = filterNodes(options, 'n01');
+  assert.deepEqual(filteredN01, ['N011', 'N012', 'N015']);
+});
+

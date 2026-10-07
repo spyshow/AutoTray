@@ -21,6 +21,7 @@ import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NodeComboboxCell } from '@/components/node-combobox-cell';
 import {
   Plus,
   Trash2,
@@ -242,6 +243,25 @@ export function CablesTable({
 
   const validNodesSetRef = useRef(validNodesSet);
   validNodesSetRef.current = validNodesSet;
+
+  // Extract all unique node names from both branches and cables
+  const nodeOptions = useMemo(() => {
+    const s = new Set<string>();
+    branches.forEach(b => {
+      if (b.node_from?.trim()) s.add(b.node_from.trim());
+      if (b.node_to?.trim()) s.add(b.node_to.trim());
+    });
+    cables.forEach(c => {
+      if (c.source_node?.trim()) s.add(c.source_node.trim());
+      if (c.dest_node?.trim()) s.add(c.dest_node.trim());
+    });
+    return Array.from(s).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }, [branches, cables]);
+
+  const nodeOptionsRef = useRef(nodeOptions);
+  nodeOptionsRef.current = nodeOptions;
 
   // Global device -> panel lookup registry computed across all cables
   const devicePanelMap = useMemo(() => {
@@ -505,19 +525,18 @@ export function CablesTable({
           return (
             <div className="space-y-0.5">
               <div className="flex items-center gap-1">
-                <EditableCellInput
+                <NodeComboboxCell
                   value={row.original.source_node}
+                  options={nodeOptionsRef.current}
                   onSave={newSrc => {
                     const idx = cablesRef.current.indexOf(row.original);
                     if (idx !== -1) {
                       onUpdateCableRef.current(idx, { ...row.original, source_node: newSrc });
                     }
                   }}
-                  className={`text-xs px-1.5 py-0.5 rounded font-medium border ${
-                    isInvalid
-                      ? 'border-red-400 bg-red-50 text-red-700'
-                      : 'border-transparent hover:border-slate-300 focus:border-blue-500 bg-slate-100 text-slate-800'
-                  } outline-none w-36`}
+                  isInvalid={isInvalid}
+                  placeholder="Source Node..."
+                  widthClass="w-36"
                 />
                 {isInvalid && (
                   <span
@@ -558,19 +577,18 @@ export function CablesTable({
           return (
             <div className="space-y-0.5">
               <div className="flex items-center gap-1">
-                <EditableCellInput
+                <NodeComboboxCell
                   value={row.original.dest_node}
+                  options={nodeOptionsRef.current}
                   onSave={newDst => {
                     const idx = cablesRef.current.indexOf(row.original);
                     if (idx !== -1) {
                       onUpdateCableRef.current(idx, { ...row.original, dest_node: newDst });
                     }
                   }}
-                  className={`text-xs px-1.5 py-0.5 rounded font-medium border ${
-                    isInvalid
-                      ? 'border-red-400 bg-red-50 text-red-700'
-                      : 'border-transparent hover:border-slate-300 focus:border-blue-500 bg-slate-100 text-slate-800'
-                  } outline-none w-36`}
+                  isInvalid={isInvalid}
+                  placeholder="Dest Node..."
+                  widthClass="w-36"
                 />
                 {isInvalid && (
                   <span

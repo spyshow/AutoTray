@@ -12,13 +12,14 @@ import {
   SortingState,
   PaginationState,
 } from '@tanstack/react-table';
-import { Branch, SupportMountingType } from '@/lib/types';
+import { Branch, Cable, SupportMountingType } from '@/lib/types';
 import { incrementIdentifier } from '@/lib/utils';
 import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NodeComboboxCell } from '@/components/node-combobox-cell';
 import {
   Plus,
   Trash2,
@@ -121,6 +122,7 @@ function EditableCellInput({
 
 interface BranchesTableProps {
   branches: Branch[];
+  cables?: Cable[];
   defaultTrayHeight: number;
   defaultMountingType?: SupportMountingType;
   onUpdateBranch: (index: number, updated: Branch) => void;
@@ -132,6 +134,7 @@ interface BranchesTableProps {
 
 export function BranchesTable({
   branches,
+  cables = [],
   defaultTrayHeight,
   defaultMountingType = 'ceiling_trapeze',
   onUpdateBranch,
@@ -230,6 +233,31 @@ export function BranchesTable({
     branches.forEach(b => set.add(b.level));
     return Array.from(set);
   }, [branches]);
+
+  // Extract all unique node names from cables schedule (source & destination) and existing branches
+  const nodeOptions = useMemo(() => {
+    const set = new Set<string>();
+    if (cables) {
+      cables.forEach(c => {
+        const s = c.source_node?.trim();
+        const d = c.dest_node?.trim();
+        if (s) set.add(s);
+        if (d) set.add(d);
+      });
+    }
+    branches.forEach(b => {
+      const f = b.node_from?.trim();
+      const t = b.node_to?.trim();
+      if (f) set.add(f);
+      if (t) set.add(t);
+    });
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }, [cables, branches]);
+
+  const nodeOptionsRef = useRef(nodeOptions);
+  nodeOptionsRef.current = nodeOptions;
 
   const filteredBranches = useMemo(() => {
     return branches.filter(b => {
@@ -415,15 +443,17 @@ export function BranchesTable({
         header: 'From Node',
         cell: ({ row }) => {
           return (
-            <EditableCellInput
+            <NodeComboboxCell
               value={row.original.node_from}
+              options={nodeOptionsRef.current}
               onSave={newFrom => {
                 const idx = branchesRef.current.indexOf(row.original);
                 if (idx !== -1) {
                   onUpdateBranchRef.current(idx, { ...row.original, node_from: newFrom });
                 }
               }}
-              className="text-xs px-1.5 py-0.5 rounded font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 bg-slate-100 text-slate-800 outline-none w-32"
+              placeholder="From Node..."
+              widthClass="w-32"
             />
           );
         },
@@ -433,15 +463,17 @@ export function BranchesTable({
         header: 'To Node',
         cell: ({ row }) => {
           return (
-            <EditableCellInput
+            <NodeComboboxCell
               value={row.original.node_to}
+              options={nodeOptionsRef.current}
               onSave={newTo => {
                 const idx = branchesRef.current.indexOf(row.original);
                 if (idx !== -1) {
                   onUpdateBranchRef.current(idx, { ...row.original, node_to: newTo });
                 }
               }}
-              className="text-xs px-1.5 py-0.5 rounded font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 bg-slate-100 text-slate-800 outline-none w-32"
+              placeholder="To Node..."
+              widthClass="w-32"
             />
           );
         },
