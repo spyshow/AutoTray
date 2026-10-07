@@ -64,6 +64,40 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }, [globalFilter, levelFilter, statusFilter]);
 
+  // Measure sticky header and toolbar offsets dynamically
+  const toolbarRef = React.useRef<HTMLDivElement>(null);
+  const [headerOffset, setHeaderOffset] = useState(57);
+  const [toolbarHeight, setToolbarHeight] = useState(56);
+
+  useEffect(() => {
+    const headerEl = document.getElementById('app-header');
+    if (!headerEl) return;
+    const updateOffset = () => {
+      setHeaderOffset(headerEl.offsetHeight);
+    };
+    updateOffset();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateOffset);
+      ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const updateToolbar = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(toolbarRef.current);
+      return () => ro.disconnect();
+    }
+  }, []);
+
   const levels = useMemo(() => {
     const set = new Set(data.map(d => d.level));
     return ['ALL', ...Array.from(set)];
@@ -335,9 +369,13 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
   });
 
   return (
-    <div className="space-y-4">
-      {/* Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      {/* Controls Bar - Sticky right under App Header */}
+      <div
+        ref={toolbarRef}
+        style={{ top: `${headerOffset}px` }}
+        className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 transition-[top] duration-75"
+      >
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -390,21 +428,24 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
       </div>
 
       {/* Sizing Table */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100">
-                {headerGroup.headers.map(header => (
-                  <TableHead key={header.id} className="text-xs font-bold text-slate-700 py-3">
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
+      <Table containerClassName="overflow-x-auto md:overflow-visible">
+        <TableHeader>
+          {table.getHeaderGroups().map(headerGroup => (
+            <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
+              {headerGroup.headers.map(header => (
+                <TableHead
+                  key={header.id}
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75"
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map(row => (
@@ -543,7 +584,7 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
         </Table>
 
         {/* Pagination Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs rounded-b-xl">
           <div className="flex flex-wrap items-center gap-3 text-slate-500">
             <span>Showing {table.getRowModel().rows.length} of {filteredData.length} branches</span>
             <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
@@ -590,6 +631,5 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
           </div>
         </div>
       </div>
-    </div>
   );
 }

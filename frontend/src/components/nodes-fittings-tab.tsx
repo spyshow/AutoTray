@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   CalculatedNodeFitting,
   NodeFittingConfig,
@@ -62,6 +62,40 @@ export function NodesFittingsTab({
   const [reducerFilter, setReducerFilter] = useState<'all' | 'has_reducers' | 'equal'>('all');
   const [inspectNode, setInspectNode] = useState<CalculatedNodeFitting | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+
+  // Measure sticky header and toolbar offsets dynamically
+  const toolbarRef = React.useRef<HTMLDivElement>(null);
+  const [headerOffset, setHeaderOffset] = useState(57);
+  const [toolbarHeight, setToolbarHeight] = useState(56);
+
+  useEffect(() => {
+    const headerEl = document.getElementById('app-header');
+    if (!headerEl) return;
+    const updateOffset = () => {
+      setHeaderOffset(headerEl.offsetHeight);
+    };
+    updateOffset();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateOffset);
+      ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const updateToolbar = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(toolbarRef.current);
+      return () => ro.disconnect();
+    }
+  }, []);
 
   // Summary KPIs
   const totalNodesCount = nodes.length;
@@ -293,78 +327,113 @@ export function NodesFittingsTab({
         </Card>
       </div>
 
-      {/* Search & Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-        <div className="relative flex-1 w-full sm:max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            placeholder="Search node ID, level, or branch..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-8 text-xs h-8 border-slate-200"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Fitting Type Filter */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[11px]">Type:</span>
-            <select
-              value={selectedTypeFilter}
-              onChange={e => setSelectedTypeFilter(e.target.value)}
-              className="h-8 text-xs px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none"
-            >
-              <option value="all">All Fitting Types</option>
-              <option value="horizontal_tee">Equal Tee</option>
-              <option value="horizontal_half_tee">Half Equal Tee</option>
-              <option value="horizontal_cross">Crosspiece (4-Way)</option>
-              <option value="horizontal_elbow_90">90° Flat Bend</option>
-              <option value="horizontal_elbow_45">45° Flat Bend</option>
-              <option value="vertical_inside_riser">90° Inside Riser</option>
-              <option value="vertical_outside_riser">90° Outside Riser</option>
-              <option value="vertical_inside_riser_45">45° Inside Riser</option>
-              <option value="vertical_outside_riser_45">45° Outside Riser</option>
-              <option value="vertical_downward_tee">Vertical Downward Tee</option>
-              <option value="vertical_upward_tee">Vertical Upward Tee</option>
-              <option value="skewed_downward_bend">Right Skewed Bend</option>
-              <option value="electrical_board_outlet">Electrical Board Outlet</option>
-              <option value="straight_coupler">Straight Coupler</option>
-              <option value="closed_bend">Closed Bend</option>
-              <option value="end_cap">End Cap</option>
-              <option value="none">Pass-Through</option>
-            </select>
+      {/* Search & Filter Toolbar + Nodes & Fittings Table Card */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        {/* Sticky Toolbar */}
+        <div
+          ref={toolbarRef}
+          style={{ top: `${headerOffset}px` }}
+          className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 transition-[top] duration-75"
+        >
+          <div className="relative flex-1 w-full sm:max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Search node ID, level, or branch..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-8 text-xs h-8 border-slate-200"
+            />
           </div>
 
-          {/* Reducer Status Filter */}
-          <select
-            value={reducerFilter}
-            onChange={e => setReducerFilter(e.target.value as any)}
-            className="h-8 text-xs px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none"
-          >
-            <option value="all">All Reducer States</option>
-            <option value="has_reducers">Has Active Reducers</option>
-            <option value="equal">Equal Widths (No Reducers)</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Fitting Type Filter */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[11px]">Type:</span>
+              <select
+                value={selectedTypeFilter}
+                onChange={e => setSelectedTypeFilter(e.target.value)}
+                className="h-8 text-xs px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none"
+              >
+                <option value="all">All Fitting Types</option>
+                <option value="horizontal_tee">Equal Tee</option>
+                <option value="horizontal_half_tee">Half Equal Tee</option>
+                <option value="horizontal_cross">Crosspiece (4-Way)</option>
+                <option value="horizontal_elbow_90">90° Flat Bend</option>
+                <option value="horizontal_elbow_45">45° Flat Bend</option>
+                <option value="vertical_inside_riser">90° Inside Riser</option>
+                <option value="vertical_outside_riser">90° Outside Riser</option>
+                <option value="vertical_inside_riser_45">45° Inside Riser</option>
+                <option value="vertical_outside_riser_45">45° Outside Riser</option>
+                <option value="vertical_downward_tee">Vertical Downward Tee</option>
+                <option value="vertical_upward_tee">Vertical Upward Tee</option>
+                <option value="skewed_downward_bend">Right Skewed Bend</option>
+                <option value="electrical_board_outlet">Electrical Board Outlet</option>
+                <option value="straight_coupler">Straight Coupler</option>
+                <option value="closed_bend">Closed Bend</option>
+                <option value="end_cap">End Cap</option>
+                <option value="none">Pass-Through</option>
+              </select>
+            </div>
 
-          <span className="text-xs text-slate-500 ml-2">
-            Showing <strong className="text-slate-900">{filteredNodes.length}</strong> of {totalNodesCount} nodes
-          </span>
+            {/* Reducer Status Filter */}
+            <select
+              value={reducerFilter}
+              onChange={e => setReducerFilter(e.target.value as any)}
+              className="h-8 text-xs px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none"
+            >
+              <option value="all">All Reducer States</option>
+              <option value="has_reducers">Has Active Reducers</option>
+              <option value="equal">Equal Widths (No Reducers)</option>
+            </select>
+
+            <span className="text-xs text-slate-500 ml-2">
+              Showing <strong className="text-slate-900">{filteredNodes.length}</strong> of {totalNodesCount} nodes
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Nodes & Fittings Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Nodes & Fittings Table */}
+        <div className="overflow-x-auto md:overflow-visible">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                <th className="py-3 px-4 w-40">Node ID &amp; Level</th>
-                <th className="py-3 px-4 w-64">Connected Branches &amp; Sized Widths</th>
-                <th className="py-3 px-4 w-80">Fitting Type (APV Catalog)</th>
-                <th className="py-3 px-4 w-32">Nominal Size</th>
-                <th className="py-3 px-4">Port Reducers (In-Line Reductions)</th>
-                <th className="py-3 px-3 text-right w-16">Actions</th>
+              <tr className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <th
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-40 shadow-xs transition-[top] duration-75"
+                >
+                  Node ID &amp; Level
+                </th>
+                <th
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-64 shadow-xs transition-[top] duration-75"
+                >
+                  Connected Branches &amp; Sized Widths
+                </th>
+                <th
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-80 shadow-xs transition-[top] duration-75"
+                >
+                  Fitting Type (APV Catalog)
+                </th>
+                <th
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-32 shadow-xs transition-[top] duration-75"
+                >
+                  Nominal Size
+                </th>
+                <th
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 shadow-xs transition-[top] duration-75"
+                >
+                  Port Reducers (In-Line Reductions)
+                </th>
+                <th
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-3 text-right w-16 shadow-xs transition-[top] duration-75"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">

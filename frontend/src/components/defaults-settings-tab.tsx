@@ -76,6 +76,40 @@ export function DefaultsSettingsTab({
   const [testInput, setTestInput] = useState('4x50');
   const [addedRuleToast, setAddedRuleToast] = useState<string | null>(null);
 
+  // Measure sticky header and catalog toolbar offsets dynamically
+  const catalogToolbarRef = useRef<HTMLDivElement>(null);
+  const [headerOffset, setHeaderOffset] = useState(57);
+  const [catalogToolbarHeight, setCatalogToolbarHeight] = useState(56);
+
+  useEffect(() => {
+    const headerEl = document.getElementById('app-header');
+    if (!headerEl) return;
+    const updateOffset = () => {
+      setHeaderOffset(headerEl.offsetHeight);
+    };
+    updateOffset();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateOffset);
+      ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!catalogToolbarRef.current) return;
+    const updateToolbar = () => {
+      if (catalogToolbarRef.current) {
+        setCatalogToolbarHeight(catalogToolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(catalogToolbarRef.current);
+      return () => ro.disconnect();
+    }
+  }, []);
+
   const customRules = parameters.custom_od_by_type || {};
 
   const handleAddCustomRule = () => {
@@ -1154,8 +1188,8 @@ export function DefaultsSettingsTab({
       </div>
 
       {/* FULL TECHNICAL HANDBOOK CATALOG SECTION */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-5">
           <div>
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-blue-600" />
@@ -1188,103 +1222,112 @@ export function DefaultsSettingsTab({
           </div>
         </div>
 
-        {/* Filter Pills & Search Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { id: 'ALL', label: 'All Cables', count: categoryCounts['ALL'] ?? catalogItems.length },
-              { id: '1C_450_750V_BUILDING', label: '1C 450/750V Solid/Strand', count: categoryCounts['1C_450_750V_BUILDING'] ?? 0 },
-              { id: '1C_450_750V_FLEX', label: '1C 450/750V Flex', count: categoryCounts['1C_450_750V_FLEX'] ?? 0 },
-              { id: '1C_06_1KV_FLEX', label: '1C 0.6/1kV Flex', count: categoryCounts['1C_06_1KV_FLEX'] ?? 0 },
-              { id: '2C_06_1KV', label: '2-Core 0.6/1kV', count: categoryCounts['2C_06_1KV'] ?? 0 },
-              { id: '3C_06_1KV', label: '3-Core 0.6/1kV', count: categoryCounts['3C_06_1KV'] ?? 0 },
-              { id: '4C_06_1KV', label: '4-Core 0.6/1kV', count: categoryCounts['4C_06_1KV'] ?? 0 },
-              { id: '5C_06_1KV', label: '5-Core 0.6/1kV', count: categoryCounts['5C_06_1KV'] ?? 0 },
-            ].map(cat => (
-              <Button
-                key={cat.id}
-                variant={catalogCategory === cat.id ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setCatalogCategory(cat.id);
+        {/* Sticky Filter Pills & Search Bar Toolbar */}
+        <div
+          ref={catalogToolbarRef}
+          style={{ top: `${headerOffset}px` }}
+          className="sticky z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 p-3 sm:px-5 shadow-xs space-y-3 transition-[top] duration-75"
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: 'ALL', label: 'All Cables', count: categoryCounts['ALL'] ?? catalogItems.length },
+                { id: '1C_450_750V_BUILDING', label: '1C 450/750V Solid/Strand', count: categoryCounts['1C_450_750V_BUILDING'] ?? 0 },
+                { id: '1C_450_750V_FLEX', label: '1C 450/750V Flex', count: categoryCounts['1C_450_750V_FLEX'] ?? 0 },
+                { id: '1C_06_1KV_FLEX', label: '1C 0.6/1kV Flex', count: categoryCounts['1C_06_1KV_FLEX'] ?? 0 },
+                { id: '2C_06_1KV', label: '2-Core 0.6/1kV', count: categoryCounts['2C_06_1KV'] ?? 0 },
+                { id: '3C_06_1KV', label: '3-Core 0.6/1kV', count: categoryCounts['3C_06_1KV'] ?? 0 },
+                { id: '4C_06_1KV', label: '4-Core 0.6/1kV', count: categoryCounts['4C_06_1KV'] ?? 0 },
+                { id: '5C_06_1KV', label: '5-Core 0.6/1kV', count: categoryCounts['5C_06_1KV'] ?? 0 },
+              ].map(cat => (
+                <Button
+                  key={cat.id}
+                  variant={catalogCategory === cat.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCatalogCategory(cat.id);
+                    setCatalogPage(1);
+                  }}
+                  className={`text-xs h-7 px-2.5 ${
+                    catalogCategory === cat.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 hover:text-slate-900 border-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                  <span className="ml-1 opacity-70 text-[10px]">({cat.count})</span>
+                </Button>
+              ))}
+            </div>
+
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search designation or size (e.g. 50, 4x, CP1)..."
+                value={catalogSearch}
+                onChange={e => {
+                  setCatalogSearch(e.target.value);
                   setCatalogPage(1);
                 }}
-                className={`text-xs h-7 px-2.5 ${
-                  catalogCategory === cat.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-600 hover:text-slate-900 border-slate-200'
-                }`}
-              >
-                {cat.label}
-                <span className="ml-1 opacity-70 text-[10px]">({cat.count})</span>
-              </Button>
-            ))}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              />
+            </div>
           </div>
 
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search designation or size (e.g. 50, 4x, CP1)..."
-              value={catalogSearch}
-              onChange={e => {
-                setCatalogSearch(e.target.value);
-                setCatalogPage(1);
-              }}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-            />
-          </div>
+          {/* Dynamic Multi-Action Bar when items are selected */}
+          {selectedCatalogKeys.size > 0 && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 shadow-xs animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-blue-600 text-white font-semibold text-xs px-2.5 py-0.5">
+                  {selectedCatalogKeys.size} selected
+                </Badge>
+                <span className="text-xs text-blue-900 font-medium">
+                  Apply one-click batch actions across selected handbook cables:
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  onClick={handleAddSelectedToRules}
+                  className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 shadow-xs flex items-center gap-1.5"
+                  title="Batch add all selected cables to Custom Type Rules"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Selected to Custom Rules ({selectedCatalogKeys.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteSelectedFromCatalog}
+                  className="h-8 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 text-xs font-semibold px-3 flex items-center gap-1.5"
+                  title="Remove selected cables from catalog view"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Selected from Catalog ({selectedCatalogKeys.size})
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCatalogKeys(new Set())}
+                  className="h-8 text-xs text-slate-600 hover:text-slate-900 px-2.5"
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Dynamic Multi-Action Bar when items are selected */}
-        {selectedCatalogKeys.size > 0 && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 shadow-xs animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <Badge className="bg-blue-600 text-white font-semibold text-xs px-2.5 py-0.5">
-                {selectedCatalogKeys.size} selected
-              </Badge>
-              <span className="text-xs text-blue-900 font-medium">
-                Apply one-click batch actions across selected handbook cables:
-              </span>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                size="sm"
-                onClick={handleAddSelectedToRules}
-                className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 shadow-xs flex items-center gap-1.5"
-                title="Batch add all selected cables to Custom Type Rules"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Selected to Custom Rules ({selectedCatalogKeys.size})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeleteSelectedFromCatalog}
-                className="h-8 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 text-xs font-semibold px-3 flex items-center gap-1.5"
-                title="Remove selected cables from catalog view"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete Selected from Catalog ({selectedCatalogKeys.size})
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedCatalogKeys(new Set())}
-                className="h-8 text-xs text-slate-600 hover:text-slate-900 px-2.5"
-              >
-                Clear Selection
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Table of Catalog Cables */}
-        <div className="border border-slate-200 rounded-lg overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+        <div className="overflow-x-auto md:overflow-visible">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-semibold">
               <tr>
-                <th className="p-2.5 w-10 text-center">
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 w-10 text-center shadow-xs transition-[top] duration-75"
+                >
                   <input
                     ref={masterCheckboxRef}
                     type="checkbox"
@@ -1294,15 +1337,60 @@ export function DefaultsSettingsTab({
                     title="Select / deselect all filtered cables"
                   />
                 </th>
-                <th className="p-2.5">Designation</th>
-                <th className="p-2.5">Catalog Code</th>
-                <th className="p-2.5">Voltage &amp; Standard</th>
-                <th className="p-2.5">Conductor &amp; Sheath</th>
-                <th className="p-2.5 text-center">Cores &times; Size</th>
-                <th className="p-2.5 text-center bg-blue-50/60 font-bold text-blue-900">OD (mm)</th>
-                <th className="p-2.5 text-right">Weight (kg/km)</th>
-                <th className="p-2.5 text-right">Current in Air (A)</th>
-                <th className="p-2.5 text-right">Actions</th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
+                >
+                  Designation
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
+                >
+                  Catalog Code
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
+                >
+                  Voltage &amp; Standard
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
+                >
+                  Conductor &amp; Sheath
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-center shadow-xs transition-[top] duration-75"
+                >
+                  Cores &times; Size
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-blue-50/90 border-b border-slate-200 p-2.5 text-center font-bold text-blue-900 shadow-xs transition-[top] duration-75"
+                >
+                  OD (mm)
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-right shadow-xs transition-[top] duration-75"
+                >
+                  Weight (kg/km)
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-right shadow-xs transition-[top] duration-75"
+                >
+                  Current in Air (A)
+                </th>
+                <th
+                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-right shadow-xs transition-[top] duration-75"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1404,7 +1492,7 @@ export function DefaultsSettingsTab({
         </div>
 
         {/* Pagination Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 pt-1">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 p-3 sm:px-5 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 rounded-b-xl">
           <div>
             Showing{' '}
             <span className="font-semibold text-slate-700">
