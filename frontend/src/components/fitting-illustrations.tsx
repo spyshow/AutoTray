@@ -146,6 +146,17 @@ export const FITTING_CATALOG_REGISTRY: Record<FittingType, FittingCatalogItem> =
     hasCover: true,
     coverName: 'Vertical Downward Tee Cover',
   },
+  vertical_upward_tee: {
+    type: 'vertical_upward_tee',
+    name: 'Vertical Upward Skewed Tee',
+    apvName: 'Vertical Upward Skewed Tee',
+    category: 'Horizontal Junction',
+    description: 'Horizontal continuous header with a vertical upward skewed branch riser chute.',
+    ports: 3,
+    angle: '90° Up Riser',
+    hasCover: true,
+    coverName: 'Vertical Upward Tee Cover',
+  },
   skewed_downward_bend: {
     type: 'skewed_downward_bend',
     name: 'Right Downward Skewed Bend',
@@ -543,6 +554,31 @@ export const FittingIllustration: React.FC<{
           <circle cx="12" cy="30" r="2.5" fill="#6366F1" />
           <circle cx="88" cy="30" r="2.5" fill="#6366F1" />
           <circle cx="50" cy="84" r="2.5" fill="#EF4444" />
+        </svg>
+      );
+
+    case 'vertical_upward_tee':
+      // Vertical Upward Skewed Tee
+      return (
+        <svg viewBox="0 0 100 100" width={s} height={s} className={className}>
+          <SvgDefs />
+          {/* Upward riser chute in 2.5D perspective */}
+          <path
+            d="M 42 16 L 58 16 L 64 66 L 36 66 Z"
+            fill="url(#apvWall)"
+            stroke="#1E293B"
+            strokeWidth="2"
+          />
+          {/* Top chute mouth opening */}
+          <ellipse cx="50" cy="16" rx="8" ry="3" fill="#0F172A" />
+          {/* Main lower horizontal header */}
+          <rect x="12" y="58" width="76" height="24" rx="2" fill="url(#apvMetal)" stroke="#334155" strokeWidth="2" />
+          <line x1="20" y1="70" x2="80" y2="70" stroke="#64748B" strokeWidth="2" strokeDasharray="3 3" />
+          <rect x="12" y="56" width="76" height="4" fill="url(#apvWall)" />
+          {/* Port connection dots */}
+          <circle cx="12" cy="70" r="2.5" fill="#6366F1" />
+          <circle cx="88" cy="70" r="2.5" fill="#6366F1" />
+          <circle cx="50" cy="16" r="2.5" fill="#10B981" />
         </svg>
       );
 
@@ -1108,6 +1144,18 @@ export const FittingSelectDropdown: React.FC<{
               <div className="flex flex-col text-left">
                 <span className="font-bold text-xs text-slate-900">Vertical Downward Skewed Tee</span>
                 <span className="text-[10px] text-slate-500">Horizontal Header with Down Chute Drop</span>
+              </div>
+            </div>
+          </SelectItem>
+
+          <SelectItem value="vertical_upward_tee" className="py-1.5 cursor-pointer">
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
+                <FittingIllustration type="vertical_upward_tee" size={28} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xs text-slate-900">Vertical Upward Skewed Tee</span>
+                <span className="text-[10px] text-slate-500">Horizontal Header with Up Chute Riser</span>
               </div>
             </div>
           </SelectItem>

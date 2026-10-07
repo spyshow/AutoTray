@@ -309,6 +309,7 @@ export function NodesFittingsTab({
               <option value="vertical_inside_riser_45">45° Inside Riser</option>
               <option value="vertical_outside_riser_45">45° Outside Riser</option>
               <option value="vertical_downward_tee">Vertical Downward Tee</option>
+              <option value="vertical_upward_tee">Vertical Upward Tee</option>
               <option value="skewed_downward_bend">Right Skewed Bend</option>
               <option value="electrical_board_outlet">Electrical Board Outlet</option>
               <option value="straight_coupler">Straight Coupler</option>

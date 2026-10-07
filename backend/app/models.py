@@ -33,6 +33,7 @@ class FittingType(str, Enum):
     VERTICAL_INSIDE_RISER_45 = "vertical_inside_riser_45"
     VERTICAL_OUTSIDE_RISER_45 = "vertical_outside_riser_45"
     VERTICAL_DOWNWARD_TEE = "vertical_downward_tee"
+    VERTICAL_UPWARD_TEE = "vertical_upward_tee"
     SKEWED_DOWNWARD_BEND = "skewed_downward_bend"
     ELECTRICAL_BOARD_OUTLET = "electrical_board_outlet"
     STRAIGHT_COUPLER = "straight_coupler"

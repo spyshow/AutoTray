@@ -22,6 +22,7 @@ export const FITTING_TYPE_NAMES: Record<FittingType, string> = {
   vertical_inside_riser_45: '45° Inside Riser Bend (Upward)',
   vertical_outside_riser_45: '45° Outside Riser Bend (Downward)',
   vertical_downward_tee: 'Vertical Downward Skewed Tee',
+  vertical_upward_tee: 'Vertical Upward Skewed Tee',
   skewed_downward_bend: 'Right Downward Skewed Bend',
   electrical_board_outlet: 'Electrical Board Outlet / Drop Flange',
   straight_coupler: 'Straight Splice Coupler',

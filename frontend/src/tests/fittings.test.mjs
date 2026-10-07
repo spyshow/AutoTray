@@ -12,6 +12,7 @@ export const FITTING_TYPE_NAMES = {
   vertical_inside_riser_45: '45° Inside Riser Bend (Upward)',
   vertical_outside_riser_45: '45° Outside Riser Bend (Downward)',
   vertical_downward_tee: 'Vertical Downward Skewed Tee',
+  vertical_upward_tee: 'Vertical Upward Skewed Tee',
   skewed_downward_bend: 'Right Downward Skewed Bend',
   electrical_board_outlet: 'Electrical Board Outlet / Drop Flange',
   straight_coupler: 'Straight Splice Coupler',
@@ -135,6 +136,7 @@ export function calculateNetworkNodeFittings(branches, branchResults, userConfig
       width_mm: maxWidth,
       height_mm: maxHeight,
       reducers,
+      include_cover: userCfg?.include_cover,
       quantity_multiplier: qtyMultiplier,
       notes: userCfg?.notes,
     });
@@ -353,5 +355,51 @@ test('45° Fitting Multiplier: Automatically assigns 2x quantity multiplier in c
   const elbow45 = fittings.find(f => f.fitting_type === 'horizontal_elbow_45');
   assert.ok(elbow45, '45° Flat Bend should be in BOM');
   assert.equal(elbow45.quantity, 2, 'BOM quantity for single 45° node must be 2 pcs (pair)');
+});
+
+test('Vertical Upward Skewed Tee: Correct metadata name, selection, and BOM generation', () => {
+  assert.equal(FITTING_TYPE_NAMES.vertical_upward_tee, 'Vertical Upward Skewed Tee');
+
+  const branches = [
+    { branch_id: 'B1', node_from: 'N_HEADER_1', node_to: 'N_TEE', level: 'Level 1', branch_type: 'horizontal', length_m: 6, tray_height_mm: 60 },
+    { branch_id: 'B2', node_from: 'N_TEE', node_to: 'N_HEADER_2', level: 'Level 1', branch_type: 'horizontal', length_m: 6, tray_height_mm: 60 },
+    { branch_id: 'B3', node_from: 'N_TEE', node_to: 'N_UP_RISER', level: 'Level 2', branch_type: 'vertical', length_m: 4, tray_height_mm: 60 },
+  ];
+  const branchResults = [
+    { branch_id: 'B1', recommended_commercial_width_mm: 400, tray_height_mm: 60 },
+    { branch_id: 'B2', recommended_commercial_width_mm: 400, tray_height_mm: 60 },
+    { branch_id: 'B3', recommended_commercial_width_mm: 200, tray_height_mm: 60 },
+  ];
+
+  const userConfigs = {
+    N_TEE: {
+      node_id: 'N_TEE',
+      fitting_type: 'vertical_upward_tee',
+      user_override: true,
+      include_cover: true,
+    },
+  };
+
+  const nodes = calculateNetworkNodeFittings(branches, branchResults, userConfigs, 60);
+  const nodeTee = nodes.find(n => n.node_id === 'N_TEE');
+  assert.ok(nodeTee);
+  assert.equal(nodeTee.selected_fitting_type, 'vertical_upward_tee');
+  assert.equal(nodeTee.width_mm, 400);
+  assert.equal(nodeTee.include_cover, true);
+  // Reducer for B3 (400 -> 200)
+  assert.ok(nodeTee.reducers['B3']);
+  assert.equal(nodeTee.reducers['B3'].from_width_mm, 400);
+  assert.equal(nodeTee.reducers['B3'].to_width_mm, 200);
+
+  const { fittings, reducers } = generateFittingsAndReducersBom(nodes);
+  const upTeeBom = fittings.find(f => f.fitting_type === 'vertical_upward_tee');
+  assert.ok(upTeeBom, 'Vertical Upward Tee must appear in fittings BOM');
+  assert.equal(upTeeBom.fitting_name, 'Vertical Upward Skewed Tee');
+  assert.equal(upTeeBom.width_mm, 400);
+  assert.equal(upTeeBom.quantity, 1);
+
+  const reducerBom = reducers.find(r => r.from_width_mm === 400 && r.to_width_mm === 200);
+  assert.ok(reducerBom, 'Reducer must appear in reducers BOM');
+  assert.equal(reducerBom.quantity, 1);
 });
 

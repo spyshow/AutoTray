@@ -15,6 +15,7 @@ export type FittingType =
   | 'vertical_inside_riser_45'
   | 'vertical_outside_riser_45'
   | 'vertical_downward_tee'
+  | 'vertical_upward_tee'
   | 'skewed_downward_bend'
   | 'electrical_board_outlet'
   | 'straight_coupler'
