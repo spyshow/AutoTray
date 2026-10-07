@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { lookupCatalogCableOd } from '@/lib/cable-catalog';
 import { guessCableCategory, normalizeCableSpec } from '@/lib/excel';
 import { isSingleCorePower, getSingleCoreFormation } from '@/lib/client-calculator';
+import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -157,6 +158,14 @@ export function CablesTable({
     pageSize: 10,
   });
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  // Restore saved page size preference from localStorage
+  useEffect(() => {
+    const saved = getStoredPageSize('cables');
+    if (saved && saved !== pagination.pageSize) {
+      setPagination(prev => ({ ...prev, pageSize: saved }));
+    }
+  }, []);
 
   // Reset page when search or type filter changes
   useEffect(() => {
@@ -1074,6 +1083,7 @@ export function CablesTable({
                 value={pagination.pageSize}
                 onChange={e => {
                   const newSize = Number(e.target.value);
+                  setStoredPageSize(newSize, 'cables');
                   setPagination({ pageIndex: 0, pageSize: newSize });
                 }}
                 className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"

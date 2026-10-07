@@ -184,6 +184,72 @@ test('Pagination allows choosing lines per page up to 100', () => {
   assert.equal(totalPages, 1);
 });
 
+test('Page Size localStorage persistence: Saves and restores table preferences with global fallback', () => {
+  const store = {};
+  globalThis.window = {
+    localStorage: {
+      getItem: (key) => store[key] ?? null,
+      setItem: (key, val) => { store[key] = String(val); },
+      removeItem: (key) => { delete store[key]; },
+    },
+  };
+  globalThis.localStorage = globalThis.window.localStorage;
+
+  const STORAGE_KEY_GLOBAL = 'autotray_lines_per_page';
+  const ALLOWED_PAGE_SIZES = [10, 20, 50, 100];
+
+  function getStoredPageSize(tableKey, defaultSize = 10) {
+    if (typeof window === 'undefined') return defaultSize;
+    try {
+      const specificKey = tableKey ? `${STORAGE_KEY_GLOBAL}_${tableKey}` : null;
+      const stored =
+        (specificKey ? localStorage.getItem(specificKey) : null) ||
+        localStorage.getItem(STORAGE_KEY_GLOBAL);
+
+      if (!stored) return defaultSize;
+      const parsed = parseInt(stored, 10);
+      return ALLOWED_PAGE_SIZES.includes(parsed) ? parsed : defaultSize;
+    } catch {
+      return defaultSize;
+    }
+  }
+
+  function setStoredPageSize(size, tableKey) {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!ALLOWED_PAGE_SIZES.includes(size)) return;
+      localStorage.setItem(STORAGE_KEY_GLOBAL, String(size));
+      if (tableKey) {
+        localStorage.setItem(`${STORAGE_KEY_GLOBAL}_${tableKey}`, String(size));
+      }
+    } catch (err) {}
+  }
+
+  // 1. Initial state: returns default 10
+  assert.equal(getStoredPageSize('branches'), 10);
+
+  // 2. Set page size on branches table to 50
+  setStoredPageSize(50, 'branches');
+  assert.equal(getStoredPageSize('branches'), 50);
+
+  // 3. Cables table should fallback to the global saved preference (50)
+  assert.equal(getStoredPageSize('cables'), 50);
+
+  // 4. Set cables explicitly to 100
+  setStoredPageSize(100, 'cables');
+  assert.equal(getStoredPageSize('cables'), 100);
+  assert.equal(getStoredPageSize('branches'), 50);
+
+  // 5. Corrupted value safely falls back to default 10
+  store[STORAGE_KEY_GLOBAL] = '999';
+  store[`${STORAGE_KEY_GLOBAL}_invalid`] = 'not_a_number';
+  assert.equal(getStoredPageSize('invalid'), 10);
+
+  // Cleanup
+  delete globalThis.window;
+  delete globalThis.localStorage;
+});
+
 test('Network topology extracts only actual added levels without phantom hardcoded levels', () => {
   const branches = [
     { branch_id: 'BR_L0_01', node_from: 'N00', node_to: 'N01', level: 'Level 0', branch_type: 'horizontal' },

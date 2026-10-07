@@ -8,6 +8,7 @@ import {
   lookupCatalogCableOd,
   CatalogCableItem,
 } from '@/lib/cable-catalog';
+import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
@@ -223,6 +224,15 @@ export function DefaultsSettingsTab({
   }, [catalogItems, catalogCategory, catalogSearch]);
 
   const [pageSize, setPageSize] = useState(10);
+
+  // Restore saved page size preference from localStorage
+  useEffect(() => {
+    const saved = getStoredPageSize('catalog');
+    if (saved && saved !== pageSize) {
+      setPageSize(saved);
+    }
+  }, []);
+
   const totalPages = Math.ceil(filteredCatalog.length / pageSize) || 1;
   const paginatedCatalog = useMemo(() => {
     const start = (catalogPage - 1) * pageSize;
@@ -1415,7 +1425,9 @@ export function DefaultsSettingsTab({
               <select
                 value={pageSize}
                 onChange={e => {
-                  setPageSize(Number(e.target.value));
+                  const newSize = Number(e.target.value);
+                  setStoredPageSize(newSize, 'catalog');
+                  setPageSize(newSize);
                   setCatalogPage(1);
                 }}
                 className="h-6 px-1.5 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"

@@ -15,6 +15,7 @@ import {
   PaginationState,
 } from '@tanstack/react-table';
 import { BranchSizingResult } from '@/lib/types';
+import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,14 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
     pageIndex: 0,
     pageSize: 10,
   });
+
+  // Restore saved page size preference from localStorage
+  useEffect(() => {
+    const saved = getStoredPageSize('results');
+    if (saved && saved !== pagination.pageSize) {
+      setPagination(prev => ({ ...prev, pageSize: saved }));
+    }
+  }, []);
 
   // Reset page when search or filters change
   useEffect(() => {
@@ -543,6 +552,7 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                 value={pagination.pageSize}
                 onChange={e => {
                   const newSize = Number(e.target.value);
+                  setStoredPageSize(newSize, 'results');
                   setPagination({ pageIndex: 0, pageSize: newSize });
                 }}
                 className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"

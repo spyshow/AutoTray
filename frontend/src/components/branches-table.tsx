@@ -14,6 +14,7 @@ import {
 } from '@tanstack/react-table';
 import { Branch, SupportMountingType } from '@/lib/types';
 import { incrementIdentifier } from '@/lib/utils';
+import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -148,6 +149,14 @@ export function BranchesTable({
     pageSize: 10,
   });
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  // Restore saved page size preference from localStorage
+  useEffect(() => {
+    const saved = getStoredPageSize('branches');
+    if (saved && saved !== pagination.pageSize) {
+      setPagination(prev => ({ ...prev, pageSize: saved }));
+    }
+  }, []);
 
   // Reset page when search or filters change
   useEffect(() => {
@@ -746,6 +755,7 @@ export function BranchesTable({
                 value={pagination.pageSize}
                 onChange={e => {
                   const newSize = Number(e.target.value);
+                  setStoredPageSize(newSize, 'branches');
                   setPagination({ pageIndex: 0, pageSize: newSize });
                 }}
                 className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
