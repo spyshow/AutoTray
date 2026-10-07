@@ -66,23 +66,35 @@ export function NodesFittingsTab({
   // Summary KPIs
   const totalNodesCount = nodes.length;
   const fittingsCount = useMemo(() => {
-    return nodes.filter(n => n.selected_fitting_type !== 'none' && n.selected_fitting_type !== 'end_cap' && n.selected_fitting_type !== 'closed_bend').length;
-  }, [nodes]);
+    return nodes.filter(n => {
+      const effType = nodeConfigs[n.node_id]?.fitting_type || n.selected_fitting_type;
+      return effType !== 'none' && effType !== 'end_cap' && effType !== 'closed_bend';
+    }).length;
+  }, [nodes, nodeConfigs]);
 
   const reducersCount = useMemo(() => {
     return nodes.reduce((sum, n) => {
-      const active = Object.values(n.reducers).filter(r => r.enabled).length;
+      const cfgReducers = nodeConfigs[n.node_id]?.reducers;
+      const active = Object.values(n.reducers).filter(r => {
+        return cfgReducers?.[r.branch_id]?.enabled !== undefined
+          ? cfgReducers[r.branch_id].enabled
+          : r.enabled;
+      }).length;
       return sum + active;
     }, 0);
-  }, [nodes]);
+  }, [nodes, nodeConfigs]);
 
   const endCapsCount = useMemo(() => {
-    return nodes.filter(n => n.selected_fitting_type === 'end_cap' || n.selected_fitting_type === 'closed_bend').length;
-  }, [nodes]);
+    return nodes.filter(n => {
+      const effType = nodeConfigs[n.node_id]?.fitting_type || n.selected_fitting_type;
+      return effType === 'end_cap' || effType === 'closed_bend';
+    }).length;
+  }, [nodes, nodeConfigs]);
 
   // Filtered nodes
   const filteredNodes = useMemo(() => {
     return nodes.filter(n => {
+      const effType = nodeConfigs[n.node_id]?.fitting_type || n.selected_fitting_type;
       // Search filter
       const term = searchTerm.toLowerCase().trim();
       const matchesSearch =
@@ -95,17 +107,22 @@ export function NodesFittingsTab({
 
       // Type filter
       if (selectedTypeFilter !== 'all') {
-        if (n.selected_fitting_type !== selectedTypeFilter) return false;
+        if (effType !== selectedTypeFilter) return false;
       }
 
       // Reducer filter
-      const hasActiveReducers = Object.values(n.reducers).some(r => r.enabled);
+      const cfgReducers = nodeConfigs[n.node_id]?.reducers;
+      const hasActiveReducers = Object.values(n.reducers).some(r => {
+        return cfgReducers?.[r.branch_id]?.enabled !== undefined
+          ? cfgReducers[r.branch_id].enabled
+          : r.enabled;
+      });
       if (reducerFilter === 'has_reducers' && !hasActiveReducers) return false;
       if (reducerFilter === 'equal' && Object.keys(n.reducers).length > 0) return false;
 
       return true;
     });
-  }, [nodes, searchTerm, selectedTypeFilter, reducerFilter]);
+  }, [nodes, searchTerm, selectedTypeFilter, reducerFilter, nodeConfigs]);
 
   const handleFittingTypeChange = (node: CalculatedNodeFitting, newType: FittingType) => {
     const existing = nodeConfigs[node.node_id] || { node_id: node.node_id };
@@ -352,12 +369,20 @@ export function NodesFittingsTab({
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredNodes.map(node => {
-                const isOverridden = node.user_override;
                 const nodeConfig = nodeConfigs[node.node_id];
+                const effectiveFittingType = nodeConfig?.fitting_type || node.selected_fitting_type;
+                const isOverridden = Boolean(
+                  nodeConfig?.user_override !== undefined ? nodeConfig.user_override : node.user_override
+                );
                 const reducerList = Object.values(node.reducers);
                 const hasReducers = reducerList.length > 0;
-                const catalogMeta = FITTING_CATALOG_REGISTRY[node.selected_fitting_type];
+                const catalogMeta = FITTING_CATALOG_REGISTRY[effectiveFittingType];
                 const hasCoverInCatalog = catalogMeta?.hasCover;
+                const is45 = is45DegFitting(effectiveFittingType);
+                const qtyMultiplier =
+                  nodeConfig?.quantity_multiplier !== undefined
+                    ? nodeConfig.quantity_multiplier
+                    : (node.quantity_multiplier || (is45 ? 2 : 1));
 
                 return (
                   <tr key={node.node_id} className="hover:bg-slate-50/70 transition-colors">
@@ -415,7 +440,7 @@ export function NodesFittingsTab({
                           className="w-11 h-11 flex-shrink-0 rounded-lg bg-gradient-to-b from-slate-50 to-slate-100 border border-slate-200 hover:border-indigo-400 hover:shadow-md cursor-pointer transition-all flex items-center justify-center p-1 group relative shadow-2xs"
                           title="Click to inspect 3D engineering diagram"
                         >
-                          <FittingIllustration type={node.selected_fitting_type} size={36} />
+                          <FittingIllustration type={effectiveFittingType} size={36} />
                           <div className="absolute inset-0 bg-indigo-600/10 rounded-lg opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <Eye className="w-3.5 h-3.5 text-indigo-700" />
                           </div>
@@ -424,7 +449,7 @@ export function NodesFittingsTab({
                         {/* Dropdown & Metadata */}
                         <div className="space-y-1.5 flex-1 min-w-[200px]">
                           <FittingSelectDropdown
-                            value={node.selected_fitting_type}
+                            value={effectiveFittingType}
                             onChange={newType => handleFittingTypeChange(node, newType)}
                             className="w-full"
                           />
@@ -441,9 +466,9 @@ export function NodesFittingsTab({
                             )}
 
                             {/* 45 Degree Pair Multiplier Indicator */}
-                            {is45DegFitting(node.selected_fitting_type) && (
+                            {is45 && (
                               <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-800 border-amber-300 font-bold">
-                                2× Pair ({node.quantity_multiplier || 2} pcs)
+                                2× Pair ({qtyMultiplier} pcs)
                               </Badge>
                             )}
 
@@ -452,7 +477,7 @@ export function NodesFittingsTab({
                               <label className="inline-flex items-center gap-1 text-[10px] text-slate-600 cursor-pointer select-none bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 hover:bg-slate-100">
                                 <input
                                   type="checkbox"
-                                  checked={nodeConfig?.include_cover || false}
+                                  checked={nodeConfig?.include_cover !== undefined ? nodeConfig.include_cover : (node.include_cover || false)}
                                   onChange={e => handleCoverToggle(node, e.target.checked)}
                                   className="w-3 h-3 text-indigo-600 rounded border-slate-300 cursor-pointer"
                                 />
@@ -475,7 +500,7 @@ export function NodesFittingsTab({
 
                     {/* Nominal Fitting Size */}
                     <td className="py-3 px-4 align-top">
-                      {node.selected_fitting_type !== 'none' ? (
+                      {effectiveFittingType !== 'none' ? (
                         <div>
                           <div className="font-mono font-bold text-slate-900 text-xs">
                             {node.width_mm} &times; {node.height_mm} mm
@@ -491,7 +516,7 @@ export function NodesFittingsTab({
 
                     {/* Port Reducers with Visual Thumbnail */}
                     <td className="py-3 px-4 align-top">
-                      {node.selected_fitting_type === 'none' ? (
+                      {effectiveFittingType === 'none' ? (
                         <span className="text-slate-400 italic text-[11px]">No fitting installed</span>
                       ) : !hasReducers ? (
                         <div className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 font-medium">
@@ -501,11 +526,15 @@ export function NodesFittingsTab({
                       ) : (
                         <div className="space-y-1.5">
                           {reducerList.map(reducer => {
+                            const redCfg = nodeConfig?.reducers?.[reducer.branch_id];
+                            const isRedEnabled = redCfg?.enabled !== undefined ? redCfg.enabled : reducer.enabled;
+                            const redType = redCfg?.reducer_type || reducer.reducer_type;
+
                             return (
                               <div
                                 key={reducer.branch_id}
                                 className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-1.5 rounded border text-[11px] ${
-                                  reducer.enabled
+                                  isRedEnabled
                                     ? 'bg-amber-50/60 border-amber-200/80 text-amber-900'
                                     : 'bg-slate-50 border-slate-200 text-slate-400 line-through'
                                 }`}
@@ -514,7 +543,7 @@ export function NodesFittingsTab({
                                   <label className="flex items-center gap-1.5 cursor-pointer select-none">
                                     <input
                                       type="checkbox"
-                                      checked={reducer.enabled}
+                                      checked={isRedEnabled}
                                       onChange={e => handleReducerToggle(node, reducer.branch_id, e.target.checked)}
                                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
                                     />
@@ -524,9 +553,9 @@ export function NodesFittingsTab({
                                   {/* Reducer Visual Thumbnail Picture */}
                                   <div
                                     className="w-7 h-7 flex-shrink-0 bg-white rounded border border-amber-200 flex items-center justify-center p-0.5 shadow-2xs"
-                                    title={`${reducer.reducer_type} diagram`}
+                                    title={`${redType} diagram`}
                                   >
-                                    <ReducerIllustration type={reducer.reducer_type} size={24} />
+                                    <ReducerIllustration type={redType} size={24} />
                                   </div>
 
                                   <span className="font-bold text-[11px]">
@@ -536,8 +565,8 @@ export function NodesFittingsTab({
 
                                 <div className="flex items-center gap-1.5">
                                   <ReducerSelectDropdown
-                                    disabled={!reducer.enabled}
-                                    value={reducer.reducer_type}
+                                    disabled={!isRedEnabled}
+                                    value={redType}
                                     onChange={newGeom =>
                                       handleReducerGeometryChange(node, reducer.branch_id, newGeom)
                                     }
@@ -577,12 +606,12 @@ export function NodesFittingsTab({
       {/* Fitting Detail Inspection Modal */}
       {inspectNode && (
         <FittingDetailModal
-          type={inspectNode.selected_fitting_type}
+          type={nodeConfigs[inspectNode.node_id]?.fitting_type || inspectNode.selected_fitting_type}
           nodeId={inspectNode.node_id}
           nominalSize={`${inspectNode.width_mm} × ${inspectNode.height_mm} mm`}
           open={Boolean(inspectNode)}
           onOpenChange={open => !open && setInspectNode(null)}
-          includeCover={nodeConfigs[inspectNode.node_id]?.include_cover || false}
+          includeCover={nodeConfigs[inspectNode.node_id]?.include_cover !== undefined ? nodeConfigs[inspectNode.node_id]!.include_cover! : (inspectNode.include_cover || false)}
           onToggleCover={include => handleCoverToggle(inspectNode, include)}
         />
       )}

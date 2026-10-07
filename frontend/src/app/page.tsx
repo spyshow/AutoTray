@@ -136,13 +136,19 @@ export default function AutoTrayRouterPage() {
 
     // Debounce sync to backend database (400ms)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      updateProjectInDatabase(activeProject.id, {
-        parameters,
-        branches,
-        cables,
-        node_fittings: nodeConfigs,
-      });
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateProjectInDatabase(activeProject.id, {
+          parameters,
+          branches,
+          cables,
+          node_fittings: nodeConfigs,
+        });
+        // Background sync calculated state into SQLite database without blocking UI
+        calculateProjectInDatabase(activeProject.id).catch(() => {});
+      } catch (err) {
+        console.error('Failed to sync project to database:', err);
+      }
     }, 400);
 
     return () => {
@@ -150,7 +156,7 @@ export default function AutoTrayRouterPage() {
     };
   }, [parameters, branches, cables, nodeConfigs, activeProject?.id]);
 
-  // 3. Calculation Runner
+  // 3. Calculation Runner - always calculates against live in-memory state to avoid stale DB reads
   const runCalculation = useCallback(async () => {
     if (branches.length === 0 && cables.length === 0) {
       setCalculationResult(null);
@@ -161,17 +167,12 @@ export default function AutoTrayRouterPage() {
     setErrorMessage(null);
     try {
       try {
-        let res: CalculationResponse;
-        if (activeProject?.id) {
-          res = await calculateProjectInDatabase(activeProject.id);
-        } else {
-          res = await calculateSizingApi({
-            parameters,
-            branches,
-            cables,
-            node_fittings: nodeConfigs,
-          });
-        }
+        const res = await calculateSizingApi({
+          parameters,
+          branches,
+          cables,
+          node_fittings: nodeConfigs,
+        });
         setCalculationResult(res);
       } catch (backendErr) {
         // Fallback to high-performance client-side graph engine
