@@ -179,6 +179,40 @@ export function BranchesTable({
   const defaultMountingTypeRef = useRef(defaultMountingType);
   defaultMountingTypeRef.current = defaultMountingType;
 
+  // Measure sticky header and toolbar offsets dynamically
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [headerOffset, setHeaderOffset] = useState(57);
+  const [toolbarHeight, setToolbarHeight] = useState(56);
+
+  useEffect(() => {
+    const headerEl = document.getElementById('app-header');
+    if (!headerEl) return;
+    const updateOffset = () => {
+      setHeaderOffset(headerEl.offsetHeight);
+    };
+    updateOffset();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateOffset);
+      ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const updateToolbar = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(toolbarRef.current);
+      return () => ro.disconnect();
+    }
+  }, []);
+
   // Clean up selected indices when branch count shrinks
   useEffect(() => {
     setSelectedIndices(prev => {
@@ -584,9 +618,13 @@ export function BranchesTable({
   });
 
   return (
-    <div className="space-y-4">
-      {/* Top Action Toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      {/* Top Action Toolbar - Sticky right under App Header */}
+      <div
+        ref={toolbarRef}
+        style={{ top: `${headerOffset}px` }}
+        className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-[top] duration-75"
+      >
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Search Box */}
           <div className="relative flex-1 sm:w-64">
@@ -595,7 +633,7 @@ export function BranchesTable({
               placeholder="Search segment ID, node, level..."
               value={globalFilter}
               onChange={e => setGlobalFilter(e.target.value)}
-              className="pl-8 text-xs h-9"
+              className="pl-8 text-xs h-9 bg-white"
             />
           </div>
 
@@ -693,7 +731,7 @@ export function BranchesTable({
           <Button
             size="sm"
             onClick={handleAddNew}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9 shadow-xs font-semibold"
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Branch / Riser
@@ -702,96 +740,98 @@ export function BranchesTable({
       </div>
 
       {/* TanStack Branches Table */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100">
-                {headerGroup.headers.map(header => (
-                  <TableHead key={header.id} className="text-xs font-bold text-slate-700 py-3">
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map(row => {
-                const originalIdx = branchesRef.current.indexOf(row.original);
-                const isSelected = selectedIndices.has(originalIdx);
-                return (
-                  <TableRow
-                    key={row.id}
-                    className={isSelected ? 'bg-indigo-50/70 hover:bg-indigo-50/90' : undefined}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id} className="text-xs py-2">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
-                  No branch or riser segments match the filter.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+      <Table containerClassName="overflow-x-auto md:overflow-visible">
+        <TableHeader>
+          {table.getHeaderGroups().map(headerGroup => (
+            <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
+              {headerGroup.headers.map(header => (
+                <TableHead
+                  key={header.id}
+                  style={{ top: `${headerOffset + toolbarHeight}px` }}
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75"
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map(row => {
+              const originalIdx = branchesRef.current.indexOf(row.original);
+              const isSelected = selectedIndices.has(originalIdx);
+              return (
+                <TableRow
+                  key={row.id}
+                  className={isSelected ? 'bg-indigo-50/70 hover:bg-indigo-50/90' : undefined}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id} className="text-xs py-2">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
+                No branch or riser segments match the filter.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
-        {/* Pagination Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs">
-          <div className="flex flex-wrap items-center gap-3 text-slate-500">
-            <span>Showing {table.getRowModel().rows.length} of {filteredBranches.length} segments</span>
-            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-              <span>Lines per page:</span>
-              <select
-                value={pagination.pageSize}
-                onChange={e => {
-                  const newSize = Number(e.target.value);
-                  setStoredPageSize(newSize, 'branches');
-                  setPagination({ pageIndex: 0, pageSize: newSize });
-                }}
-                className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-              >
-                {[10, 20, 50, 100].map(size => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="h-8 px-3 text-xs"
+      {/* Pagination Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs rounded-b-xl">
+        <div className="flex flex-wrap items-center gap-3 text-slate-500">
+          <span>Showing {table.getRowModel().rows.length} of {filteredBranches.length} segments</span>
+          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+            <span>Lines per page:</span>
+            <select
+              value={pagination.pageSize}
+              onChange={e => {
+                const newSize = Number(e.target.value);
+                setStoredPageSize(newSize, 'branches');
+                setPagination({ pageIndex: 0, pageSize: newSize });
+              }}
+              className="h-7 px-2 text-xs bg-white border border-slate-300 rounded font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             >
-              Previous
-            </Button>
-            <span className="text-slate-600 font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of{' '}
-              {Math.max(1, table.getPageCount())}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="h-8 px-3 text-xs"
-            >
-              Next
-            </Button>
+              {[10, 20, 50, 100].map(size => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="h-8 px-3 text-xs"
+          >
+            Previous
+          </Button>
+          <span className="text-slate-600 font-medium">
+            Page {table.getState().pagination.pageIndex + 1} of{' '}
+            {Math.max(1, table.getPageCount())}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="h-8 px-3 text-xs"
+          >
+            Next
+          </Button>
         </div>
       </div>
     </div>

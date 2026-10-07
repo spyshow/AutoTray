@@ -52,7 +52,7 @@ export function HeaderConfig({
   const handleOpenSettings = onOpenSettings || onOpenDefaultsTab;
 
   return (
-    <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30">
+    <div id="app-header" className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30">
       {/* Top Navbar */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         {/* Brand & Project Selector */}

@@ -185,6 +185,40 @@ export function CablesTable({
   const onDeleteCableRef = useRef(onDeleteCable);
   onDeleteCableRef.current = onDeleteCable;
 
+  // Measure sticky header and toolbar offsets dynamically
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [headerOffset, setHeaderOffset] = useState(57);
+  const [toolbarHeight, setToolbarHeight] = useState(56);
+
+  useEffect(() => {
+    const headerEl = document.getElementById('app-header');
+    if (!headerEl) return;
+    const updateOffset = () => {
+      setHeaderOffset(headerEl.offsetHeight);
+    };
+    updateOffset();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateOffset);
+      ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const updateToolbar = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(toolbarRef.current);
+      return () => ro.disconnect();
+    }
+  }, []);
+
   // Clean up selected indices when cable count shrinks
   useEffect(() => {
     setSelectedIndices(prev => {
@@ -928,115 +962,124 @@ export function CablesTable({
         </div>
       )}
 
-      {/* Top Action Toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Search Box */}
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              placeholder="Search tag, node, type..."
-              value={globalFilter}
-              onChange={e => setGlobalFilter(e.target.value)}
-              className="pl-8 text-xs h-9"
-            />
+      {/* TanStack Cables Card */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        {/* Top Action Toolbar - Sticky right under App Header */}
+        <div
+          ref={toolbarRef}
+          style={{ top: `${headerOffset}px` }}
+          className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-[top] duration-75"
+        >
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Search Box */}
+            <div className="relative flex-1 sm:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                placeholder="Search tag, node, type..."
+                value={globalFilter}
+                onChange={e => setGlobalFilter(e.target.value)}
+                className="pl-8 text-xs h-9 bg-white"
+              />
+            </div>
+
+            {/* Type Filter Pills */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              {['ALL', 'power', 'control', 'signal', 'data'].map(type => (
+                <button
+                  key={type}
+                  onClick={() => setTypeFilter(type)}
+                  className={`text-xs px-2.5 py-1 rounded-md font-medium capitalize transition ${
+                    typeFilter === type
+                      ? 'bg-white text-blue-600 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Type Filter Pills */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-            {['ALL', 'power', 'control', 'signal', 'data'].map(type => (
-              <button
-                key={type}
-                onClick={() => setTypeFilter(type)}
-                className={`text-xs px-2.5 py-1 rounded-md font-medium capitalize transition ${
-                  typeFilter === type
-                    ? 'bg-white text-blue-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {missingSpecsCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenMissingSpecModal?.()}
+                className="text-xs h-9 border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold gap-1.5"
+                title="Enter Outer Diameter for unrecognized cable specifications"
               >
-                {type}
-              </button>
-            ))}
+                <Sliders className="h-3.5 w-3.5 text-amber-600" />
+                Missing ODs ({missingSpecsCount})
+              </Button>
+            )}
+            {selectedIndices.size > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (confirm(`Delete ${selectedIndices.size} selected cable(s)?`)) {
+                    if (onDeleteMultipleCables) {
+                      onDeleteMultipleCables(Array.from(selectedIndices));
+                    } else {
+                      const sorted = Array.from(selectedIndices).sort((a, b) => b - a);
+                      sorted.forEach(idx => onDeleteCable(idx));
+                    }
+                    setSelectedIndices(new Set());
+                  }
+                }}
+                className="text-xs h-9 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete Selected ({selectedIndices.size})
+              </Button>
+            )}
+
+            {cables.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete all ${cables.length} cables from this project?`)) {
+                    if (onDeleteAllCables) {
+                      onDeleteAllCables();
+                    } else if (onDeleteMultipleCables) {
+                      onDeleteMultipleCables(cables.map((_, i) => i));
+                    }
+                    setSelectedIndices(new Set());
+                  }
+                }}
+                className="text-xs h-9 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold gap-1.5"
+                title="Delete all cables in this project"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete All
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              onClick={handleAddNew}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 shadow-xs font-semibold"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Cable
+            </Button>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          {missingSpecsCount > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenMissingSpecModal?.()}
-              className="text-xs h-9 border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold gap-1.5"
-              title="Enter Outer Diameter for unrecognized cable specifications"
-            >
-              <Sliders className="h-3.5 w-3.5 text-amber-600" />
-              Missing ODs ({missingSpecsCount})
-            </Button>
-          )}
-          {selectedIndices.size > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (confirm(`Delete ${selectedIndices.size} selected cable(s)?`)) {
-                  if (onDeleteMultipleCables) {
-                    onDeleteMultipleCables(Array.from(selectedIndices));
-                  } else {
-                    const sorted = Array.from(selectedIndices).sort((a, b) => b - a);
-                    sorted.forEach(idx => onDeleteCable(idx));
-                  }
-                  setSelectedIndices(new Set());
-                }
-              }}
-              className="text-xs h-9 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold gap-1.5"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete Selected ({selectedIndices.size})
-            </Button>
-          )}
-
-          {cables.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (confirm(`Are you sure you want to delete all ${cables.length} cables from this project?`)) {
-                  if (onDeleteAllCables) {
-                    onDeleteAllCables();
-                  } else if (onDeleteMultipleCables) {
-                    onDeleteMultipleCables(cables.map((_, i) => i));
-                  }
-                  setSelectedIndices(new Set());
-                }
-              }}
-              className="text-xs h-9 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold gap-1.5"
-              title="Delete all cables in this project"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete All
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            onClick={handleAddNew}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Cable
-          </Button>
-        </div>
-      </div>
-
-      {/* TanStack Cables Table */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <Table>
+        {/* TanStack Cables Table */}
+        <Table containerClassName="overflow-x-auto md:overflow-visible">
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100">
+              <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
                 {headerGroup.headers.map(header => (
-                  <TableHead key={header.id} className="text-xs font-bold text-slate-700 py-3">
+                  <TableHead
+                    key={header.id}
+                    style={{ top: `${headerOffset + toolbarHeight}px` }}
+                    className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -1074,7 +1117,7 @@ export function CablesTable({
         </Table>
 
         {/* Pagination Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-200 bg-slate-50 text-xs rounded-b-xl">
           <div className="flex flex-wrap items-center gap-3 text-slate-500">
             <span>Showing {table.getRowModel().rows.length} of {filteredCables.length} cables</span>
             <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
