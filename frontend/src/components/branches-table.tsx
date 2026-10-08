@@ -772,7 +772,7 @@ export function BranchesTable({
       </div>
 
       {/* TanStack Branches Table */}
-      <Table containerClassName="overflow-x-auto md:overflow-visible">
+      <Table containerClassName="overflow-x-auto min-w-full">
         <TableHeader>
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
@@ -780,7 +780,7 @@ export function BranchesTable({
                 <TableHead
                   key={header.id}
                   style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75"
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75 whitespace-nowrap"
                 >
                   {header.isPlaceholder
                     ? null
@@ -795,10 +795,17 @@ export function BranchesTable({
             table.getRowModel().rows.map(row => {
               const originalIdx = branchesRef.current.indexOf(row.original);
               const isSelected = selectedIndices.has(originalIdx);
+              const isZebra = originalIdx % 2 === 1;
               return (
                 <TableRow
                   key={row.id}
-                  className={isSelected ? 'bg-indigo-50/70 hover:bg-indigo-50/90' : undefined}
+                  className={
+                    isSelected
+                      ? 'bg-indigo-50/80 hover:bg-indigo-100/70 border-b border-indigo-200/50'
+                      : isZebra
+                      ? 'bg-slate-50/70 hover:bg-slate-100/80 border-b border-slate-200/80'
+                      : 'bg-white hover:bg-slate-50/80 border-b border-slate-200/80'
+                  }
                 >
                   {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id} className="text-xs py-2">

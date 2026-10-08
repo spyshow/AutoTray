@@ -918,8 +918,8 @@ export function DefaultsSettingsTab({
                       </td>
                     </tr>
                   ) : (
-                    Object.entries(customRules).map(([tName, tOd]) => (
-                      <tr key={tName} className="hover:bg-slate-50/80">
+                    Object.entries(customRules).map(([tName, tOd], idx) => (
+                      <tr key={tName} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}>
                         <td className="p-2.5 font-semibold text-slate-800">
                           <div className="flex items-center gap-1.5">
                             <span className="font-mono">{tName}</span>
@@ -1446,7 +1446,7 @@ export function DefaultsSettingsTab({
                   </td>
                 </tr>
               ) : (
-                paginatedCatalog.map(item => {
+                paginatedCatalog.map((item, idx) => {
                   const itemKey = getCatalogItemKey(item);
                   const isSelected = selectedCatalogKeys.has(itemKey);
                   const cleanKey = getCleanRuleKey(item);
@@ -1456,7 +1456,11 @@ export function DefaultsSettingsTab({
                     <tr
                       key={itemKey}
                       className={`transition-colors ${
-                        isSelected ? 'bg-blue-50/80 hover:bg-blue-50' : 'hover:bg-slate-50/80'
+                        isSelected
+                          ? 'bg-blue-50/80 hover:bg-blue-100/70'
+                          : idx % 2 === 1
+                          ? 'bg-slate-50/70 hover:bg-slate-100/70'
+                          : 'bg-white hover:bg-slate-50/70'
                       }`}
                     >
                       <td className="p-2.5 text-center w-10">

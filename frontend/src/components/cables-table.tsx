@@ -752,7 +752,7 @@ export function CablesTable({
           <Button
             variant="ghost"
             size="sm"
-            className="p-0 hover:bg-transparent font-bold"
+            className="p-0 hover:bg-transparent font-bold whitespace-nowrap"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Cable Tag
@@ -765,7 +765,7 @@ export function CablesTable({
           const isExpanded = expandedRowIds.has(row.id);
 
           return (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 min-w-[170px]">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -809,7 +809,7 @@ export function CablesTable({
       },
       {
         accessorKey: 'source_node',
-        header: 'Source (From Node)',
+        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Source (From Node)</span>,
         cell: ({ row }) => {
           const sNode = row.original.source_node.trim();
           const isInvalid = !validNodesSetRef.current.has(sNode);
@@ -817,7 +817,7 @@ export function CablesTable({
           const isExternalDevice = /^(?:E|CBE)[\-_]/i.test(sNode) || (Boolean(parentPanel) && parentPanel !== sNode);
 
           return (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 min-w-[160px]">
               <div className="flex items-center gap-1">
                 <NodeComboboxCell
                   value={row.original.source_node}
@@ -861,7 +861,7 @@ export function CablesTable({
       },
       {
         accessorKey: 'dest_node',
-        header: 'Destination (To Node)',
+        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Destination (To Node)</span>,
         cell: ({ row }) => {
           const dNode = row.original.dest_node.trim();
           const isInvalid = !validNodesSetRef.current.has(dNode);
@@ -869,7 +869,7 @@ export function CablesTable({
           const isExternalDevice = /^(?:E|CBE)[\-_]/i.test(dNode) || (Boolean(parentPanel) && parentPanel !== dNode);
 
           return (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 min-w-[175px]">
               <div className="flex items-center gap-1">
                 <NodeComboboxCell
                   value={row.original.dest_node}
@@ -914,7 +914,7 @@ export function CablesTable({
       {
         accessorKey: 'cable_type',
         header: () => (
-          <div>
+          <div className="whitespace-nowrap">
             <div className="font-bold text-slate-800">Cable Spec / Type</div>
             <div className="text-[10px] text-slate-400 font-normal">e.g. 4x1.5, 4x50, Cat6A</div>
           </div>
@@ -937,7 +937,7 @@ export function CablesTable({
           const isCrossSection = /(?:^|[^\d])\d+\s*(?:[xX*×Gg\/])\s*[\d\.]+/i.test(row.original.cable_type || '');
 
           return (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 min-w-[135px]">
               <div className="flex items-center gap-1">
                 <EditableCellInput
                   value={row.original.cable_type}
@@ -1001,46 +1001,48 @@ export function CablesTable({
       },
       {
         accessorKey: 'category',
-        header: 'Category',
+        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Category</span>,
         cell: ({ row }) => {
           const currentCat: CableCategory = row.original.category || guessCableCategory(row.original.cable_type);
           return (
-            <select
-              value={currentCat}
-              onChange={e => {
-                const idx = cablesRef.current.indexOf(row.original);
-                if (idx !== -1) {
-                  onUpdateCableRef.current(idx, {
-                    ...row.original,
-                    category: e.target.value as CableCategory,
-                  });
-                }
-              }}
-              className={`text-xs rounded font-medium px-2 py-0.5 border cursor-pointer capitalize transition ${
-                currentCat === 'power'
-                  ? 'bg-amber-50 text-amber-800 border-amber-300'
-                  : currentCat === 'control'
-                  ? 'bg-blue-50 text-blue-800 border-blue-300'
-                  : currentCat === 'signal'
-                  ? 'bg-purple-50 text-purple-800 border-purple-300'
-                  : currentCat === 'data'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                  : 'bg-slate-100 text-slate-800 border-slate-300'
-              }`}
-            >
-              <option value="power">Power</option>
-              <option value="control">Control</option>
-              <option value="signal">Signal</option>
-              <option value="data">Data</option>
-              <option value="bus">Bus</option>
-            </select>
+            <div className="min-w-[95px]">
+              <select
+                value={currentCat}
+                onChange={e => {
+                  const idx = cablesRef.current.indexOf(row.original);
+                  if (idx !== -1) {
+                    onUpdateCableRef.current(idx, {
+                      ...row.original,
+                      category: e.target.value as CableCategory,
+                    });
+                  }
+                }}
+                className={`text-xs rounded font-medium px-2 py-0.5 border cursor-pointer capitalize transition ${
+                  currentCat === 'power'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                    : currentCat === 'control'
+                    ? 'bg-blue-50 text-blue-800 border-blue-300'
+                    : currentCat === 'signal'
+                    ? 'bg-purple-50 text-purple-800 border-purple-300'
+                    : currentCat === 'data'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-slate-100 text-slate-800 border-slate-300'
+                }`}
+              >
+                <option value="power">Power</option>
+                <option value="control">Control</option>
+                <option value="signal">Signal</option>
+                <option value="data">Data</option>
+                <option value="bus">Bus</option>
+              </select>
+            </div>
           );
         },
       },
       {
         id: 'formation',
         header: () => (
-          <div>
+          <div className="whitespace-nowrap">
             <div className="font-bold text-slate-800">Formation</div>
             <div className="text-[10px] text-slate-400 font-normal">1-Core Method</div>
           </div>
@@ -1050,86 +1052,90 @@ export function CablesTable({
           const is1C = isSingleCorePower(row.original);
 
           if (currentCat !== 'power') {
-            return <span className="text-[11px] text-slate-400 italic">Multilayer</span>;
+            return <div className="min-w-[110px]"><span className="text-[11px] text-slate-400 italic">Multilayer</span></div>;
           }
 
           if (!is1C) {
-            return <span className="text-[11px] text-slate-500 font-medium">Spaced (2&times;OD)</span>;
+            return <div className="min-w-[110px]"><span className="text-[11px] text-slate-500 font-medium">Spaced (2&times;OD)</span></div>;
           }
 
           const currentFormation = getSingleCoreFormation(row.original, parametersRef.current?.single_core_power_formation);
 
           return (
-            <select
-              value={row.original.formation || ''}
-              onChange={e => {
-                const idx = cablesRef.current.indexOf(row.original);
-                if (idx !== -1) {
-                  onUpdateCableRef.current(idx, {
-                    ...row.original,
-                    formation: (e.target.value || undefined) as CableFormation | undefined,
-                  });
-                }
-              }}
-              className={`text-xs rounded font-medium px-2 py-0.5 border cursor-pointer transition ${
-                currentFormation === 'trefoil'
-                  ? 'bg-blue-50 text-blue-800 border-blue-300 font-semibold'
-                  : currentFormation === 'flat_touching'
-                  ? 'bg-teal-50 text-teal-800 border-teal-300'
-                  : 'bg-amber-50 text-amber-800 border-amber-300'
-              }`}
-              title="1-Core installation method on tray"
-            >
-              <option value="">
-                Default ({currentFormation === 'trefoil' ? 'Trefoil Δ' : currentFormation === 'flat_touching' ? 'Flat Touching' : 'Flat Spaced'})
-              </option>
-              <option value="trefoil">Trefoil (Trifoly Δ)</option>
-              <option value="flat_touching">Flat Touching (Near)</option>
-              <option value="flat_spaced">Flat Spaced (1×OD)</option>
-            </select>
+            <div className="min-w-[110px]">
+              <select
+                value={row.original.formation || ''}
+                onChange={e => {
+                  const idx = cablesRef.current.indexOf(row.original);
+                  if (idx !== -1) {
+                    onUpdateCableRef.current(idx, {
+                      ...row.original,
+                      formation: (e.target.value || undefined) as CableFormation | undefined,
+                    });
+                  }
+                }}
+                className={`text-xs rounded font-medium px-2 py-0.5 border cursor-pointer transition ${
+                  currentFormation === 'trefoil'
+                    ? 'bg-blue-50 text-blue-800 border-blue-300 font-semibold'
+                    : currentFormation === 'flat_touching'
+                    ? 'bg-teal-50 text-teal-800 border-teal-300'
+                    : 'bg-amber-50 text-amber-800 border-amber-300'
+                }`}
+                title="1-Core installation method on tray"
+              >
+                <option value="">
+                  Default ({currentFormation === 'trefoil' ? 'Trefoil Δ' : currentFormation === 'flat_touching' ? 'Flat Touching' : 'Flat Spaced'})
+                </option>
+                <option value="trefoil">Trefoil (Trifoly Δ)</option>
+                <option value="flat_touching">Flat Touching (Near)</option>
+                <option value="flat_spaced">Flat Spaced (1×OD)</option>
+              </select>
+            </div>
           );
         },
       },
       {
         accessorKey: 'od_mm',
         header: () => (
-          <div className="text-right">
+          <div className="text-right whitespace-nowrap">
             <div className="font-bold text-slate-800">OD (mm)</div>
             <div className="text-[10px] text-slate-400 font-normal">Outer Dia</div>
           </div>
         ),
         cell: ({ row }) => {
           return (
-            <EditableCellInput
-              type="number"
-              step="0.1"
-              min="0.5"
-              value={row.original.od_mm ?? ''}
-              onSave={newOd => {
-                const idx = cablesRef.current.indexOf(row.original);
-                if (idx !== -1) {
-                  onUpdateCableRef.current(idx, {
-                    ...row.original,
-                    od_mm: parseFloat(String(newOd)) || 10,
-                  });
-                }
-              }}
-              className="font-mono text-xs font-bold text-blue-700 text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-16 outline-none"
-            />
+            <div className="flex justify-end pr-1 min-w-[80px]">
+              <EditableCellInput
+                type="number"
+                step="0.1"
+                min="0.5"
+                value={row.original.od_mm ?? ''}
+                onSave={newOd => {
+                  const idx = cablesRef.current.indexOf(row.original);
+                  if (idx !== -1) {
+                    onUpdateCableRef.current(idx, {
+                      ...row.original,
+                      od_mm: parseFloat(String(newOd)) || 10,
+                    });
+                  }
+                }}
+                className="font-mono text-xs font-bold text-blue-700 text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-16 outline-none"
+              />
+            </div>
           );
         },
       },
       {
         accessorKey: 'count',
         header: () => (
-          <div className="text-right" title="Parallel Cable Runs (Count of identical cables running together, NOT conductor cores). Default: 1">
+          <div className="text-right whitespace-nowrap" title="Parallel Cable Runs (Count of identical cables running together, NOT conductor cores). Default: 1">
             <div className="font-bold text-slate-800">Parallel Runs</div>
             <div className="text-[10px] text-slate-400 font-normal">Qty (Default: 1)</div>
           </div>
         ),
         cell: ({ row }) => {
           return (
-            <div title="Parallel cable runs (count)">
+            <div className="flex justify-end pr-1 min-w-[95px]" title="Parallel cable runs (count)">
               <EditableCellInput
                 type="number"
                 min="1"
@@ -1144,7 +1150,7 @@ export function CablesTable({
                     });
                   }
                 }}
-                className="font-mono text-xs text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-14 outline-none"
+                className="font-mono text-xs font-semibold text-slate-800 text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-14 outline-none"
               />
             </div>
           );
@@ -1152,21 +1158,25 @@ export function CablesTable({
       },
       {
         id: 'routing_status',
-        header: 'Route Status',
+        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Route Status</span>,
         cell: ({ row }) => {
           const originalIdx = cablesRef.current.indexOf(row.original);
           const route = getCableRoute(row.original, originalIdx);
 
           if (!route) {
-            return <Badge variant="secondary" className="text-[10px]">Uncalculated</Badge>;
+            return (
+              <div className="min-w-[155px]">
+                <Badge variant="secondary" className="text-[10px]">Uncalculated</Badge>
+              </div>
+            );
           }
           if (route.status === 'ROUTED') {
             return (
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 min-w-[155px]">
                 <Badge variant="success" className="text-[10px] gap-1 font-mono">
                   <CheckCircle2 className="h-3 w-3" /> {route.total_length_m} m
                 </Badge>
-                <div className="text-[9px] text-slate-500 truncate max-w-[140px]" title={route.path_branches?.join(' ➔ ')}>
+                <div className="text-[9px] text-slate-500 truncate max-w-[160px]" title={route.path_branches?.join(' ➔ ')}>
                   {route.path_branches?.length} segments
                 </div>
               </div>
@@ -1174,7 +1184,7 @@ export function CablesTable({
           }
           if (route.status === 'LOCAL') {
             return (
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 min-w-[155px]">
                 <Badge
                   variant="secondary"
                   className="text-[10px] bg-slate-100 text-slate-700 border-slate-300 font-medium cursor-help"
@@ -1187,12 +1197,12 @@ export function CablesTable({
             );
           }
           return (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 min-w-[155px]">
               <Badge variant="destructive" className="text-[10px] cursor-help" title={route.unrouted_reason || ''}>
                 Unrouted
               </Badge>
               {route.unrouted_reason && (
-                <div className="text-[9px] text-red-600 font-medium truncate max-w-[150px] cursor-help" title={route.unrouted_reason}>
+                <div className="text-[9px] text-red-600 font-medium truncate max-w-[160px] cursor-help" title={route.unrouted_reason}>
                   {route.unrouted_reason}
                 </div>
               )}
@@ -1205,18 +1215,20 @@ export function CablesTable({
         header: '',
         cell: ({ row }) => {
           return (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const idx = cablesRef.current.indexOf(row.original);
-                if (idx !== -1) onDeleteCableRef.current(idx);
-              }}
-              className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
-              title="Delete Cable"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <div className="w-8 flex items-center justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const idx = cablesRef.current.indexOf(row.original);
+                  if (idx !== -1) onDeleteCableRef.current(idx);
+                }}
+                className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+                title="Delete Cable"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           );
         },
       },
@@ -1393,7 +1405,7 @@ export function CablesTable({
         </div>
 
         {/* TanStack Cables Table */}
-        <Table containerClassName="overflow-x-auto md:overflow-visible">
+        <Table containerClassName="overflow-x-auto min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
@@ -1401,7 +1413,7 @@ export function CablesTable({
                   <TableHead
                     key={header.id}
                     style={{ top: `${headerOffset + toolbarHeight}px` }}
-                    className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75"
+                    className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75 whitespace-nowrap"
                   >
                     {header.isPlaceholder
                       ? null
@@ -1418,15 +1430,19 @@ export function CablesTable({
                 const isSelected = selectedIndices.has(originalIdx);
                 const isExpanded = expandedRowIds.has(row.id);
                 const route = getCableRoute(row.original, originalIdx);
+                const isZebra = originalIdx % 2 === 1;
+
                 return (
                   <React.Fragment key={row.id}>
                     <TableRow
                       className={
                         isSelected
-                          ? 'bg-blue-50/70 hover:bg-blue-50/90'
+                          ? 'bg-blue-50/80 hover:bg-blue-100/70 border-b border-blue-200/50'
                           : isExpanded
                           ? 'bg-blue-50/30 border-b-0'
-                          : undefined
+                          : isZebra
+                          ? 'bg-slate-50/70 hover:bg-slate-100/80 border-b border-slate-200/80'
+                          : 'bg-white hover:bg-slate-50/80 border-b border-slate-200/80'
                       }
                     >
                       {row.getVisibleCells().map(cell => (
@@ -1436,7 +1452,7 @@ export function CablesTable({
                       ))}
                     </TableRow>
                     {isExpanded && (
-                      <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b-2 border-slate-200">
+                      <TableRow className="bg-blue-50/20 hover:bg-blue-50/20 border-b-2 border-slate-200">
                         <TableCell colSpan={columns.length} className="p-3">
                           <CableRouteExpandedView
                             cable={row.original}

@@ -437,7 +437,7 @@ export function NodesFittingsTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredNodes.map(node => {
+              {filteredNodes.map((node, idx) => {
                 const nodeConfig = nodeConfigs[node.node_id];
                 const effectiveFittingType = nodeConfig?.fitting_type || node.selected_fitting_type;
                 const isOverridden = Boolean(
@@ -454,7 +454,7 @@ export function NodesFittingsTab({
                     : (node.quantity_multiplier || (is45 ? 2 : 1));
 
                 return (
-                  <tr key={node.node_id} className="hover:bg-slate-50/70 transition-colors">
+                  <tr key={node.node_id} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70 transition-colors' : 'bg-white hover:bg-slate-50/70 transition-colors'}>
                     {/* Node ID & Level */}
                     <td className="py-3 px-4 align-top">
                       <div className="font-mono font-bold text-slate-900 flex items-center gap-1.5">

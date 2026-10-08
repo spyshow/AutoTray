@@ -432,7 +432,7 @@ export default function AutoTrayRouterPage() {
   const isProjectEmpty = branches.length === 0 && cables.length === 0;
 
   return (
-    <div className="min-h-screen bg-slate-100/60 text-slate-900 pb-12 flex flex-col">
+    <div className="min-h-screen bg-slate-200/60 text-slate-900 pb-12 flex flex-col">
       {/* Top Header & Sizing Parameters Bar */}
       <HeaderConfig
         parameters={parameters}

@@ -562,7 +562,10 @@ export function MappingModal({
                     </thead>
                     <tbody>
                       {getPreviewRows(getActiveCablesData()).map((row, rIdx) => (
-                        <tr key={rIdx} className="border-b border-slate-100 hover:bg-slate-50">
+                        <tr
+                          key={rIdx}
+                          className={`border-b border-slate-100 ${rIdx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}`}
+                        >
                           {row.map((cell: any, cIdx: number) => (
                             <td key={cIdx} className="p-2 text-slate-700 whitespace-nowrap">
                               {String(cell ?? '')}
@@ -601,7 +604,10 @@ export function MappingModal({
                     </thead>
                     <tbody>
                       {getPreviewRows(getActiveBranchesData()).map((row, rIdx) => (
-                        <tr key={rIdx} className="border-b border-slate-100 hover:bg-slate-50">
+                        <tr
+                          key={rIdx}
+                          className={`border-b border-slate-100 ${rIdx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}`}
+                        >
                           {row.map((cell: any, cIdx: number) => (
                             <td key={cIdx} className="p-2 text-slate-700 whitespace-nowrap">
                               {String(cell ?? '')}
@@ -1105,8 +1111,11 @@ export function MappingModal({
                       </td>
                     </tr>
                   ) : (
-                    uniqueRawTypes.map(rawType => (
-                      <tr key={rawType} className="hover:bg-slate-50">
+                    uniqueRawTypes.map((rawType, idx) => (
+                      <tr
+                        key={rawType}
+                        className={`${idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}`}
+                      >
                         <td className="p-2 font-medium text-slate-800">{rawType}</td>
                         <td className="p-2">
                           <select

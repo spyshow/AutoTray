@@ -428,7 +428,7 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
       </div>
 
       {/* Sizing Table */}
-      <Table containerClassName="overflow-x-auto md:overflow-visible">
+      <Table containerClassName="overflow-x-auto min-w-full">
         <TableHeader>
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
@@ -436,7 +436,7 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                 <TableHead
                   key={header.id}
                   style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75"
+                  className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75 whitespace-nowrap"
                 >
                   {header.isPlaceholder
                     ? null
@@ -448,18 +448,26 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
         </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map(row => (
-                <React.Fragment key={row.id}>
-                  <TableRow
-                    data-state={row.getIsSelected() && 'selected'}
-                    className={row.getIsExpanded() ? 'bg-blue-50/40' : undefined}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id} className="text-xs py-2.5">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+              table.getRowModel().rows.map(row => {
+                const isZebra = row.index % 2 === 1;
+                return (
+                  <React.Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() && 'selected'}
+                      className={
+                        row.getIsExpanded()
+                          ? 'bg-blue-50/50 hover:bg-blue-50/70 border-b border-blue-200/50'
+                          : isZebra
+                          ? 'bg-slate-50/70 hover:bg-slate-100/80 border-b border-slate-200/80'
+                          : 'bg-white hover:bg-slate-50/80 border-b border-slate-200/80'
+                      }
+                    >
+                      {row.getVisibleCells().map(cell => (
+                        <TableCell key={cell.id} className="text-xs py-2.5">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
 
                   {/* Expandable Sub-Row (Routed Cables List & Structural Breakdown) */}
                   {row.getIsExpanded() && (
@@ -519,7 +527,7 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                               <tbody className="divide-y divide-slate-100">
                                 {row.original.cables_detail && row.original.cables_detail.length > 0 ? (
                                   row.original.cables_detail.map((cd, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50">
+                                    <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/80'}>
                                       <td className="p-1.5 font-mono font-medium text-slate-900">{cd.cable_tag}</td>
                                       <td className="p-1.5 text-slate-600">{cd.source_node} ➔ {cd.dest_node}</td>
                                       <td className="p-1.5">
@@ -572,7 +580,8 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                     </TableRow>
                   )}
                 </React.Fragment>
-              ))
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">

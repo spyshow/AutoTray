@@ -217,7 +217,7 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
             </thead>
             <tbody className="divide-y divide-slate-100">
               {bom.trays.map((tray, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/70">
+                <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}>
                   <td className="p-3 font-bold text-slate-900 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
                     {tray.width_mm} mm
@@ -295,7 +295,7 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {bom.fittings.map((fit, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/70">
+                    <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}>
                       <td className="p-2.5 font-bold text-slate-900 flex items-center gap-2">
                         <div className="w-8 h-8 rounded bg-slate-50 border border-slate-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
                           <FittingIllustration type={fit.fitting_type} size={28} />
@@ -351,7 +351,7 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {bom.reducers.map((red, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/70">
+                    <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}>
                       <td className="p-2.5 font-bold text-amber-900 flex items-center gap-2">
                         <div className="w-8 h-8 rounded bg-white border border-amber-200 flex items-center justify-center p-0.5 flex-shrink-0 shadow-2xs">
                           <ReducerIllustration type={red.reducer_type} size={26} />
@@ -410,7 +410,7 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
             </thead>
             <tbody className="divide-y divide-slate-100">
               {bom.accessories.map((acc, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/70">
+                <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}>
                   <td className="p-3 font-semibold text-slate-900">{acc.item_name}</td>
                   <td className="p-3">
                     <Badge variant="outline" className="text-[10px] bg-slate-50 font-medium">
@@ -453,7 +453,7 @@ export function BomTab({ bom, parameters, onExportExcel, isExporting }: BomTabPr
             </thead>
             <tbody className="divide-y divide-slate-100">
               {bom.cables_summary.map((csum, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/70">
+                <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}>
                   <td className="p-3 font-bold text-slate-900 uppercase">{csum.cable_type}</td>
                   <td className="p-3 text-center font-medium text-slate-700">{csum.cable_count}</td>
                   <td className="p-3 text-right font-bold text-emerald-700">{csum.total_routed_length_m} m</td>

@@ -955,13 +955,13 @@ export function NetworkGraphView({ branches, results, cables }: NetworkGraphView
                           <Table className="text-xs">
                             <TableHeader className="bg-slate-100/90 sticky top-0 z-10">
                               <TableRow className="border-b border-slate-200">
-                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 pl-3">Cable Tag</TableHead>
-                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5">Type / Specification</TableHead>
-                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-right">OD</TableHead>
-                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-center">Qty</TableHead>
-                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5">Full Cable Span</TableHead>
-                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5">Equipment / Panels</TableHead>
-                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-right pr-3">Width Footprint</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 pl-3 whitespace-nowrap">Cable Tag</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 whitespace-nowrap">Type / Specification</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-right whitespace-nowrap">OD</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-center whitespace-nowrap">Qty</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 whitespace-nowrap">Full Cable Span</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 whitespace-nowrap">Equipment / Panels</TableHead>
+                                <TableHead className="h-8 font-semibold text-slate-700 py-1.5 text-right pr-3 whitespace-nowrap">Width Footprint</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -973,7 +973,10 @@ export function NetworkGraphView({ branches, results, cables }: NetworkGraphView
                                 </TableRow>
                               ) : (
                                 filteredRoutedCables.map((c, idx) => (
-                                  <TableRow key={c.cable_tag || idx} className="hover:bg-blue-50/40 border-b border-slate-100 last:border-0">
+                                  <TableRow
+                                    key={c.cable_tag || idx}
+                                    className={`border-b border-slate-100 last:border-0 ${idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-50/70'}`}
+                                  >
                                     <TableCell className="font-mono font-bold text-blue-600 py-1.5 pl-3">
                                       {c.cable_tag}
                                     </TableCell>

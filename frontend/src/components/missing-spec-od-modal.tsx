@@ -226,14 +226,14 @@ export function MissingSpecOdModal({
                   <th className="py-2.5 px-3 text-right">Outer Diameter (OD mm)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {missingSpecs.map(item => {
+              <tbody className="divide-y divide-slate-100">
+                {missingSpecs.map((item, idx) => {
                   const current = specsData[item.spec] || {
                     od: String(getDefaultOdForCategory(item.category)),
                     category: item.category,
                   };
                   return (
-                    <tr key={item.spec} className="hover:bg-slate-50 transition-colors">
+                    <tr key={item.spec} className={idx % 2 === 1 ? 'bg-slate-50/70 hover:bg-slate-100/70 transition-colors' : 'bg-white hover:bg-slate-50/70 transition-colors'}>
                       <td className="py-2 px-3 font-mono font-bold text-slate-900">
                         <div className="flex items-center gap-1.5">
                           <span>{item.spec}</span>
