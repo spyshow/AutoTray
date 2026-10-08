@@ -63,10 +63,8 @@ export function NodesFittingsTab({
   const [inspectNode, setInspectNode] = useState<CalculatedNodeFitting | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
-  // Measure sticky header and toolbar offsets dynamically
-  const toolbarRef = React.useRef<HTMLDivElement>(null);
+  // Measure sticky header offset dynamically
   const [headerOffset, setHeaderOffset] = useState(57);
-  const [toolbarHeight, setToolbarHeight] = useState(56);
 
   useEffect(() => {
     const headerEl = document.getElementById('app-header');
@@ -78,21 +76,6 @@ export function NodesFittingsTab({
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(updateOffset);
       ro.observe(headerEl);
-      return () => ro.disconnect();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!toolbarRef.current) return;
-    const updateToolbar = () => {
-      if (toolbarRef.current) {
-        setToolbarHeight(toolbarRef.current.offsetHeight);
-      }
-    };
-    updateToolbar();
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(updateToolbar);
-      ro.observe(toolbarRef.current);
       return () => ro.disconnect();
     }
   }, []);
@@ -331,7 +314,6 @@ export function NodesFittingsTab({
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         {/* Sticky Toolbar */}
         <div
-          ref={toolbarRef}
           style={{ top: `${headerOffset}px` }}
           className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 transition-[top] duration-75"
         >
@@ -394,44 +376,26 @@ export function NodesFittingsTab({
         </div>
 
         {/* Nodes & Fittings Table */}
-        <div className="overflow-x-auto md:overflow-visible">
+        <div className="overflow-x-auto min-w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                <th
-                  style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-40 shadow-xs transition-[top] duration-75"
-                >
+              <tr className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="bg-slate-100 border-b border-slate-200 py-3 px-4 w-40">
                   Node ID &amp; Level
                 </th>
-                <th
-                  style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-64 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 py-3 px-4 w-64">
                   Connected Branches &amp; Sized Widths
                 </th>
-                <th
-                  style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-80 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 py-3 px-4 w-80">
                   Fitting Type (APV Catalog)
                 </th>
-                <th
-                  style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 w-32 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 py-3 px-4 w-32">
                   Nominal Size
                 </th>
-                <th
-                  style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-4 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 py-3 px-4">
                   Port Reducers (In-Line Reductions)
                 </th>
-                <th
-                  style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 py-3 px-3 text-right w-16 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 py-3 px-3 text-right w-16">
                   Actions
                 </th>
               </tr>

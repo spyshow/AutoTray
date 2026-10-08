@@ -434,10 +434,8 @@ export function CablesTable({
   const onDeleteCableRef = useRef(onDeleteCable);
   onDeleteCableRef.current = onDeleteCable;
 
-  // Measure sticky header and toolbar offsets dynamically
-  const toolbarRef = useRef<HTMLDivElement>(null);
+  // Measure sticky header offset dynamically
   const [headerOffset, setHeaderOffset] = useState(57);
-  const [toolbarHeight, setToolbarHeight] = useState(56);
 
   useEffect(() => {
     const headerEl = document.getElementById('app-header');
@@ -449,21 +447,6 @@ export function CablesTable({
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(updateOffset);
       ro.observe(headerEl);
-      return () => ro.disconnect();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!toolbarRef.current) return;
-    const updateToolbar = () => {
-      if (toolbarRef.current) {
-        setToolbarHeight(toolbarRef.current.offsetHeight);
-      }
-    };
-    updateToolbar();
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(updateToolbar);
-      ro.observe(toolbarRef.current);
       return () => ro.disconnect();
     }
   }, []);
@@ -765,7 +748,7 @@ export function CablesTable({
           const isExpanded = expandedRowIds.has(row.id);
 
           return (
-            <div className="space-y-0.5 min-w-[170px]">
+            <div className="space-y-0.5 min-w-[125px] max-w-[140px]">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -790,7 +773,7 @@ export function CablesTable({
                       onUpdateCableRef.current(idx, { ...row.original, cable_tag: newTag });
                     }
                   }}
-                  className="font-mono text-xs font-semibold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white px-1 py-0.5 rounded outline-none w-28"
+                  className="font-mono text-xs font-semibold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white px-1 py-0.5 rounded outline-none w-24"
                 />
               </div>
               {isDuplicate && (
@@ -809,7 +792,7 @@ export function CablesTable({
       },
       {
         accessorKey: 'source_node',
-        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Source (From Node)</span>,
+        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Source (From)</span>,
         cell: ({ row }) => {
           const sNode = row.original.source_node.trim();
           const isInvalid = !validNodesSetRef.current.has(sNode);
@@ -817,7 +800,7 @@ export function CablesTable({
           const isExternalDevice = /^(?:E|CBE)[\-_]/i.test(sNode) || (Boolean(parentPanel) && parentPanel !== sNode);
 
           return (
-            <div className="space-y-0.5 min-w-[160px]">
+            <div className="space-y-0.5 min-w-[115px] max-w-[130px]">
               <div className="flex items-center gap-1">
                 <NodeComboboxCell
                   value={row.original.source_node}
@@ -829,8 +812,8 @@ export function CablesTable({
                     }
                   }}
                   isInvalid={isInvalid}
-                  placeholder="Source Node..."
-                  widthClass="w-36"
+                  placeholder="Source..."
+                  widthClass="w-28"
                 />
                 {isInvalid && (
                   <span
@@ -861,7 +844,7 @@ export function CablesTable({
       },
       {
         accessorKey: 'dest_node',
-        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Destination (To Node)</span>,
+        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Destination (To)</span>,
         cell: ({ row }) => {
           const dNode = row.original.dest_node.trim();
           const isInvalid = !validNodesSetRef.current.has(dNode);
@@ -869,7 +852,7 @@ export function CablesTable({
           const isExternalDevice = /^(?:E|CBE)[\-_]/i.test(dNode) || (Boolean(parentPanel) && parentPanel !== dNode);
 
           return (
-            <div className="space-y-0.5 min-w-[175px]">
+            <div className="space-y-0.5 min-w-[115px] max-w-[130px]">
               <div className="flex items-center gap-1">
                 <NodeComboboxCell
                   value={row.original.dest_node}
@@ -881,8 +864,8 @@ export function CablesTable({
                     }
                   }}
                   isInvalid={isInvalid}
-                  placeholder="Dest Node..."
-                  widthClass="w-36"
+                  placeholder="Dest..."
+                  widthClass="w-28"
                 />
                 {isInvalid && (
                   <span
@@ -915,8 +898,7 @@ export function CablesTable({
         accessorKey: 'cable_type',
         header: () => (
           <div className="whitespace-nowrap">
-            <div className="font-bold text-slate-800">Cable Spec / Type</div>
-            <div className="text-[10px] text-slate-400 font-normal">e.g. 4x1.5, 4x50, Cat6A</div>
+            <div className="font-bold text-slate-800">Spec / Type</div>
           </div>
         ),
         cell: ({ row }) => {
@@ -937,7 +919,7 @@ export function CablesTable({
           const isCrossSection = /(?:^|[^\d])\d+\s*(?:[xX*×Gg\/])\s*[\d\.]+/i.test(row.original.cable_type || '');
 
           return (
-            <div className="space-y-0.5 min-w-[135px]">
+            <div className="space-y-0.5 min-w-[105px] max-w-[120px]">
               <div className="flex items-center gap-1">
                 <EditableCellInput
                   value={row.original.cable_type}
@@ -966,10 +948,10 @@ export function CablesTable({
                       });
                     }
                   }}
-                  className="font-mono text-xs font-semibold text-slate-900 bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 px-1.5 py-0.5 rounded outline-none w-24 shadow-xs"
+                  className="font-mono text-xs font-semibold text-slate-900 bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 px-1 py-0.5 rounded outline-none w-20 shadow-xs"
                 />
                 {isCrossSection && (
-                  <span className="text-[11px] font-semibold text-slate-400 select-none">
+                  <span className="text-[10px] font-semibold text-slate-400 select-none">
                     mm²
                   </span>
                 )}
@@ -992,7 +974,7 @@ export function CablesTable({
                   title="Click to enter Outer Diameter for this spec in the Rules Modal"
                 >
                   <AlertCircle className="h-2.5 w-2.5 text-amber-600 shrink-0" />
-                  <span>+ Set OD in Rules</span>
+                  <span>+ Set OD</span>
                 </button>
               ) : null}
             </div>
@@ -1005,7 +987,7 @@ export function CablesTable({
         cell: ({ row }) => {
           const currentCat: CableCategory = row.original.category || guessCableCategory(row.original.cable_type);
           return (
-            <div className="min-w-[95px]">
+            <div className="min-w-[75px] max-w-[85px]">
               <select
                 value={currentCat}
                 onChange={e => {
@@ -1017,7 +999,7 @@ export function CablesTable({
                     });
                   }
                 }}
-                className={`text-xs rounded font-medium px-2 py-0.5 border cursor-pointer capitalize transition ${
+                className={`text-[11px] rounded font-medium px-1.5 py-0.5 border cursor-pointer capitalize transition ${
                   currentCat === 'power'
                     ? 'bg-amber-50 text-amber-800 border-amber-300'
                     : currentCat === 'control'
@@ -1044,7 +1026,6 @@ export function CablesTable({
         header: () => (
           <div className="whitespace-nowrap">
             <div className="font-bold text-slate-800">Formation</div>
-            <div className="text-[10px] text-slate-400 font-normal">1-Core Method</div>
           </div>
         ),
         cell: ({ row }) => {
@@ -1052,17 +1033,17 @@ export function CablesTable({
           const is1C = isSingleCorePower(row.original);
 
           if (currentCat !== 'power') {
-            return <div className="min-w-[110px]"><span className="text-[11px] text-slate-400 italic">Multilayer</span></div>;
+            return <div className="min-w-[85px] max-w-[95px]"><span className="text-[11px] text-slate-400 italic">Multilayer</span></div>;
           }
 
           if (!is1C) {
-            return <div className="min-w-[110px]"><span className="text-[11px] text-slate-500 font-medium">Spaced (2&times;OD)</span></div>;
+            return <div className="min-w-[85px] max-w-[95px]"><span className="text-[11px] text-slate-500 font-medium">Spaced</span></div>;
           }
 
           const currentFormation = getSingleCoreFormation(row.original, parametersRef.current?.single_core_power_formation);
 
           return (
-            <div className="min-w-[110px]">
+            <div className="min-w-[85px] max-w-[95px]">
               <select
                 value={row.original.formation || ''}
                 onChange={e => {
@@ -1074,7 +1055,7 @@ export function CablesTable({
                     });
                   }
                 }}
-                className={`text-xs rounded font-medium px-2 py-0.5 border cursor-pointer transition ${
+                className={`text-[11px] rounded font-medium px-1 py-0.5 border cursor-pointer transition ${
                   currentFormation === 'trefoil'
                     ? 'bg-blue-50 text-blue-800 border-blue-300 font-semibold'
                     : currentFormation === 'flat_touching'
@@ -1084,11 +1065,11 @@ export function CablesTable({
                 title="1-Core installation method on tray"
               >
                 <option value="">
-                  Default ({currentFormation === 'trefoil' ? 'Trefoil Δ' : currentFormation === 'flat_touching' ? 'Flat Touching' : 'Flat Spaced'})
+                  Def ({currentFormation === 'trefoil' ? 'Trefoil' : currentFormation === 'flat_touching' ? 'Touching' : 'Spaced'})
                 </option>
-                <option value="trefoil">Trefoil (Trifoly Δ)</option>
-                <option value="flat_touching">Flat Touching (Near)</option>
-                <option value="flat_spaced">Flat Spaced (1×OD)</option>
+                <option value="trefoil">Trefoil Δ</option>
+                <option value="flat_touching">Touching</option>
+                <option value="flat_spaced">Spaced</option>
               </select>
             </div>
           );
@@ -1099,12 +1080,11 @@ export function CablesTable({
         header: () => (
           <div className="text-right whitespace-nowrap">
             <div className="font-bold text-slate-800">OD (mm)</div>
-            <div className="text-[10px] text-slate-400 font-normal">Outer Dia</div>
           </div>
         ),
         cell: ({ row }) => {
           return (
-            <div className="flex justify-end pr-1 min-w-[80px]">
+            <div className="flex justify-end pr-0.5 min-w-[60px] max-w-[70px]">
               <EditableCellInput
                 type="number"
                 step="0.1"
@@ -1119,7 +1099,7 @@ export function CablesTable({
                     });
                   }
                 }}
-                className="font-mono text-xs font-bold text-blue-700 text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-16 outline-none"
+                className="font-mono text-xs font-bold text-blue-700 text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-14 outline-none"
               />
             </div>
           );
@@ -1129,13 +1109,13 @@ export function CablesTable({
         accessorKey: 'count',
         header: () => (
           <div className="text-right whitespace-nowrap" title="Parallel Cable Runs (Count of identical cables running together, NOT conductor cores). Default: 1">
-            <div className="font-bold text-slate-800">Parallel Runs</div>
-            <div className="text-[10px] text-slate-400 font-normal">Qty (Default: 1)</div>
+            <div className="font-bold text-slate-800">Runs</div>
+            <div className="text-[10px] text-slate-400 font-normal">Qty</div>
           </div>
         ),
         cell: ({ row }) => {
           return (
-            <div className="flex justify-end pr-1 min-w-[95px]" title="Parallel cable runs (count)">
+            <div className="flex justify-end pr-0.5 min-w-[55px] max-w-[65px]" title="Parallel cable runs (count)">
               <EditableCellInput
                 type="number"
                 min="1"
@@ -1150,7 +1130,7 @@ export function CablesTable({
                     });
                   }
                 }}
-                className="font-mono text-xs font-semibold text-slate-800 text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-14 outline-none"
+                className="font-mono text-xs font-semibold text-slate-800 text-right border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent px-1 py-0.5 rounded w-12 outline-none"
               />
             </div>
           );
@@ -1158,51 +1138,51 @@ export function CablesTable({
       },
       {
         id: 'routing_status',
-        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Route Status</span>,
+        header: () => <span className="whitespace-nowrap font-bold text-slate-800">Route</span>,
         cell: ({ row }) => {
           const originalIdx = cablesRef.current.indexOf(row.original);
           const route = getCableRoute(row.original, originalIdx);
 
           if (!route) {
             return (
-              <div className="min-w-[155px]">
+              <div className="min-w-[100px] max-w-[115px]">
                 <Badge variant="secondary" className="text-[10px]">Uncalculated</Badge>
               </div>
             );
           }
           if (route.status === 'ROUTED') {
             return (
-              <div className="space-y-0.5 min-w-[155px]">
-                <Badge variant="success" className="text-[10px] gap-1 font-mono">
+              <div className="space-y-0.5 min-w-[100px] max-w-[115px]">
+                <Badge variant="success" className="text-[10px] gap-1 font-mono px-1.5 py-0.2">
                   <CheckCircle2 className="h-3 w-3" /> {route.total_length_m} m
                 </Badge>
-                <div className="text-[9px] text-slate-500 truncate max-w-[160px]" title={route.path_branches?.join(' ➔ ')}>
-                  {route.path_branches?.length} segments
+                <div className="text-[9px] text-slate-500 truncate max-w-[105px]" title={route.path_branches?.join(' ➔ ')}>
+                  {route.path_branches?.length} segs
                 </div>
               </div>
             );
           }
           if (route.status === 'LOCAL') {
             return (
-              <div className="space-y-0.5 min-w-[155px]">
+              <div className="space-y-0.5 min-w-[100px] max-w-[115px]">
                 <Badge
                   variant="secondary"
-                  className="text-[10px] bg-slate-100 text-slate-700 border-slate-300 font-medium cursor-help"
+                  className="text-[10px] bg-slate-100 text-slate-700 border-slate-300 font-medium cursor-help px-1.5 py-0.2"
                   title={route.unrouted_reason || 'Local internal cable'}
                 >
-                  Local ({row.original.source_node})
+                  Local
                 </Badge>
-                <div className="text-[9px] text-slate-500">Internal (0 m)</div>
+                <div className="text-[9px] text-slate-500">0 m</div>
               </div>
             );
           }
           return (
-            <div className="space-y-0.5 min-w-[155px]">
-              <Badge variant="destructive" className="text-[10px] cursor-help" title={route.unrouted_reason || ''}>
+            <div className="space-y-0.5 min-w-[100px] max-w-[115px]">
+              <Badge variant="destructive" className="text-[10px] cursor-help px-1.5 py-0.2" title={route.unrouted_reason || ''}>
                 Unrouted
               </Badge>
               {route.unrouted_reason && (
-                <div className="text-[9px] text-red-600 font-medium truncate max-w-[160px] cursor-help" title={route.unrouted_reason}>
+                <div className="text-[9px] text-red-600 font-medium truncate max-w-[105px] cursor-help" title={route.unrouted_reason}>
                   {route.unrouted_reason}
                 </div>
               )}
@@ -1301,7 +1281,6 @@ export function CablesTable({
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* Top Action Toolbar - Sticky right under App Header */}
         <div
-          ref={toolbarRef}
           style={{ top: `${headerOffset}px` }}
           className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-[top] duration-75"
         >
@@ -1412,8 +1391,7 @@ export function CablesTable({
                 {headerGroup.headers.map(header => (
                   <TableHead
                     key={header.id}
-                    style={{ top: `${headerOffset + toolbarHeight}px` }}
-                    className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75 whitespace-nowrap"
+                    className="bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-2 px-2 whitespace-nowrap"
                   >
                     {header.isPlaceholder
                       ? null
@@ -1446,7 +1424,7 @@ export function CablesTable({
                       }
                     >
                       {row.getVisibleCells().map(cell => (
-                        <TableCell key={cell.id} className="text-xs py-2">
+                        <TableCell key={cell.id} className="text-xs py-1.5 px-2">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}

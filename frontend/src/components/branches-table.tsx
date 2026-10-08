@@ -182,10 +182,8 @@ export function BranchesTable({
   const defaultMountingTypeRef = useRef(defaultMountingType);
   defaultMountingTypeRef.current = defaultMountingType;
 
-  // Measure sticky header and toolbar offsets dynamically
-  const toolbarRef = useRef<HTMLDivElement>(null);
+  // Measure sticky header offset dynamically
   const [headerOffset, setHeaderOffset] = useState(57);
-  const [toolbarHeight, setToolbarHeight] = useState(56);
 
   useEffect(() => {
     const headerEl = document.getElementById('app-header');
@@ -197,21 +195,6 @@ export function BranchesTable({
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(updateOffset);
       ro.observe(headerEl);
-      return () => ro.disconnect();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!toolbarRef.current) return;
-    const updateToolbar = () => {
-      if (toolbarRef.current) {
-        setToolbarHeight(toolbarRef.current.offsetHeight);
-      }
-    };
-    updateToolbar();
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(updateToolbar);
-      ro.observe(toolbarRef.current);
       return () => ro.disconnect();
     }
   }, []);
@@ -653,7 +636,6 @@ export function BranchesTable({
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Top Action Toolbar - Sticky right under App Header */}
       <div
-        ref={toolbarRef}
         style={{ top: `${headerOffset}px` }}
         className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-[top] duration-75"
       >
@@ -779,8 +761,7 @@ export function BranchesTable({
               {headerGroup.headers.map(header => (
                 <TableHead
                   key={header.id}
-                  style={{ top: `${headerOffset + toolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 shadow-xs transition-[top] duration-75 whitespace-nowrap"
+                  className="bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 whitespace-nowrap"
                 >
                   {header.isPlaceholder
                     ? null

@@ -81,10 +81,8 @@ export function DefaultsSettingsTab({
   const [testInput, setTestInput] = useState('4x50');
   const [addedRuleToast, setAddedRuleToast] = useState<string | null>(null);
 
-  // Measure sticky header and catalog toolbar offsets dynamically
-  const catalogToolbarRef = useRef<HTMLDivElement>(null);
+  // Measure sticky header offset dynamically
   const [headerOffset, setHeaderOffset] = useState(57);
-  const [catalogToolbarHeight, setCatalogToolbarHeight] = useState(56);
 
   useEffect(() => {
     const headerEl = document.getElementById('app-header');
@@ -96,21 +94,6 @@ export function DefaultsSettingsTab({
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(updateOffset);
       ro.observe(headerEl);
-      return () => ro.disconnect();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!catalogToolbarRef.current) return;
-    const updateToolbar = () => {
-      if (catalogToolbarRef.current) {
-        setCatalogToolbarHeight(catalogToolbarRef.current.offsetHeight);
-      }
-    };
-    updateToolbar();
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(updateToolbar);
-      ro.observe(catalogToolbarRef.current);
       return () => ro.disconnect();
     }
   }, []);
@@ -1269,7 +1252,6 @@ export function DefaultsSettingsTab({
 
         {/* Sticky Filter Pills & Search Bar Toolbar */}
         <div
-          ref={catalogToolbarRef}
           style={{ top: `${headerOffset}px` }}
           className="sticky z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 p-3 sm:px-5 shadow-xs space-y-3 transition-[top] duration-75"
         >
@@ -1365,14 +1347,11 @@ export function DefaultsSettingsTab({
         </div>
 
         {/* Table of Catalog Cables */}
-        <div className="overflow-x-auto md:overflow-visible">
+        <div className="overflow-x-auto min-w-full">
           <table className="w-full text-xs text-left border-collapse">
-            <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-semibold">
+            <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-semibold whitespace-nowrap">
               <tr>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 w-10 text-center shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5 w-10 text-center">
                   <input
                     ref={masterCheckboxRef}
                     type="checkbox"
@@ -1382,58 +1361,31 @@ export function DefaultsSettingsTab({
                     title="Select / deselect all filtered cables"
                   />
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
                   Designation
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
                   Catalog Code
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
                   Voltage &amp; Standard
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
                   Conductor &amp; Sheath
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-center shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-center">
                   Cores &times; Size
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-blue-50/90 border-b border-slate-200 p-2.5 text-center font-bold text-blue-900 shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-blue-50/90 border-b border-slate-200 p-2.5 text-center font-bold text-blue-900">
                   OD (mm)
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-right shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-right">
                   Weight (kg/km)
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-right shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-right">
                   Current in Air (A)
                 </th>
-                <th
-                  style={{ top: `${headerOffset + catalogToolbarHeight}px` }}
-                  className="sticky z-10 bg-slate-100 border-b border-slate-200 p-2.5 text-right shadow-xs transition-[top] duration-75"
-                >
+                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-right">
                   Actions
                 </th>
               </tr>
