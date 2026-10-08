@@ -24,14 +24,19 @@ import { Input } from '@/components/ui/input';
 import { NodeComboboxCell } from '@/components/node-combobox-cell';
 import {
   Plus,
+  Minus,
   Trash2,
   Search,
   ArrowUpDown,
+  ArrowRight,
   AlertCircle,
   CheckCircle2,
   Layers,
   Sparkles,
   Sliders,
+  Route,
+  GitFork,
+  Info,
 } from 'lucide-react';
 
 interface EditableCellInputProps {
@@ -126,6 +131,236 @@ function EditableCellInput({
   );
 }
 
+/**
+ * Detailed cable routing view rendered directly under a table row when '+' is clicked.
+ * Shows the full visual route from source to destination, intermediate nodes,
+ * traversed tray branch segments, levels, length, and diagnostic state.
+ */
+function CableRouteExpandedView({
+  cable,
+  route,
+  branches,
+}: {
+  cable: Cable;
+  route?: CableRoutingResult;
+  branches: Branch[];
+}) {
+  const branchMap = useMemo(() => {
+    const map = new Map<string, Branch>();
+    branches.forEach(b => map.set(b.branch_id, b));
+    return map;
+  }, [branches]);
+
+  const sourceNode = (cable.source_node || '').trim();
+  const destNode = (cable.dest_node || '').trim();
+  const sourcePanel = cable.source_panel?.trim();
+  const destPanel = cable.dest_panel?.trim();
+
+  const pathNodes = route?.path_nodes || [];
+  const pathBranches = route?.path_branches || [];
+  const isRouted = route?.status === 'ROUTED';
+  const isLocal = route?.status === 'LOCAL';
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-inner space-y-3 animate-in fade-in-50 duration-150">
+      {/* Top Summary Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center font-bold flex-shrink-0">
+            <Route className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-bold text-slate-900 text-xs">
+                {cable.cable_tag || 'Cable'}
+              </span>
+              <span className="text-slate-400 text-xs">•</span>
+              <span className="text-slate-600 text-xs font-medium">
+                {cable.cable_type} (OD: {cable.od_mm ?? 10} mm)
+              </span>
+              {cable.count > 1 && (
+                <Badge variant="outline" className="text-[10px] bg-slate-50 border-slate-200">
+                  {cable.count} parallel runs
+                </Badge>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span>Endpoints:</span>
+              <span className="font-mono font-semibold text-slate-800">{sourceNode}</span>
+              <span className="text-slate-400">➔</span>
+              <span className="font-mono font-semibold text-slate-800">{destNode}</span>
+              {(sourcePanel || destPanel) && (
+                <span className="text-slate-400 ml-1">
+                  ({sourcePanel ? `From Panel: ${sourcePanel}` : ''}
+                  {sourcePanel && destPanel ? ' • ' : ''}
+                  {destPanel ? `To Panel: ${destPanel}` : ''})
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Status & Metrics Badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {isRouted ? (
+            <>
+              <Badge className="bg-emerald-600 text-white font-mono text-xs px-2.5 py-1 flex items-center gap-1 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {route.total_length_m} m Total Length
+              </Badge>
+              <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-300 text-xs px-2 py-0.5">
+                {pathBranches.length} Tray Segments
+              </Badge>
+            </>
+          ) : isLocal ? (
+            <Badge className="bg-indigo-600 text-white font-mono text-xs px-2.5 py-1">
+              Internal / Same Node (0 m)
+            </Badge>
+          ) : route ? (
+            <Badge variant="destructive" className="text-xs px-2.5 py-1">
+              Unrouted
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-xs text-slate-500 px-2 py-0.5">
+              Calculation Pending
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Route Flow Visualization */}
+      {isRouted && pathNodes.length > 0 ? (
+        <div className="space-y-3">
+          {/* Breadcrumb Flow */}
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+              Network Routing Path Flow
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-slate-50/80 rounded-lg border border-slate-200 overflow-x-auto text-xs">
+              {pathNodes.map((node, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === pathNodes.length - 1;
+                const branchId = idx < pathBranches.length ? pathBranches[idx] : null;
+                const branchObj = branchId ? branchMap.get(branchId) : null;
+
+                return (
+                  <React.Fragment key={`${node}-${idx}`}>
+                    {/* Node Badge */}
+                    <div
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded font-mono font-bold shadow-2xs ${
+                        isFirst
+                          ? 'bg-blue-600 text-white border border-blue-700'
+                          : isLast
+                          ? 'bg-emerald-600 text-white border border-emerald-700'
+                          : 'bg-white text-slate-800 border border-slate-300'
+                      }`}
+                      title={
+                        isFirst
+                          ? `Source Endpoint: ${node}${sourcePanel ? ` (Panel: ${sourcePanel})` : ''}`
+                          : isLast
+                          ? `Destination Endpoint: ${node}${destPanel ? ` (Panel: ${destPanel})` : ''}`
+                          : `Intermediate Junction: ${node}`
+                      }
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+                      <span>{node}</span>
+                      {isFirst && <span className="text-[9px] font-sans font-normal opacity-90 ml-0.5">(Source)</span>}
+                      {isLast && <span className="text-[9px] font-sans font-normal opacity-90 ml-0.5">(Dest)</span>}
+                    </div>
+
+                    {/* Connecting Branch Segment */}
+                    {branchId && (
+                      <div className="inline-flex items-center gap-1 text-slate-400 px-0.5">
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <div
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-900 font-mono text-[11px]"
+                          title={`Segment: ${branchId} | Level: ${branchObj?.level || 'N/A'} | Length: ${branchObj?.length_m ?? 'N/A'} m`}
+                        >
+                          <GitFork className="w-3 h-3 text-indigo-500 flex-shrink-0" />
+                          <span className="font-semibold">{branchId}</span>
+                          {branchObj && (
+                            <span className="text-[10px] text-indigo-600 font-sans">
+                              ({branchObj.length_m}m • {branchObj.level})
+                            </span>
+                          )}
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tray Segments Breakdown Cards */}
+          {pathBranches.length > 0 && (
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                Traversed Tray Segments ({pathBranches.length})
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {pathBranches.map((bId, bIdx) => {
+                  const bObj = branchMap.get(bId);
+                  const isVertical = bObj?.branch_type === 'vertical';
+
+                  return (
+                    <div
+                      key={`${bId}-${bIdx}`}
+                      className="p-2 rounded-md bg-white border border-slate-200 shadow-2xs flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold">
+                          {bIdx + 1}
+                        </span>
+                        <div>
+                          <div className="font-mono font-bold text-slate-800">{bId}</div>
+                          <div className="text-[10px] text-slate-500">
+                            {bObj?.level || 'Level 1'} • {isVertical ? 'Vertical Riser' : 'Horizontal Tray'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-semibold text-slate-700">
+                          {bObj?.length_m ?? '-'} m
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : isLocal ? (
+        <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-center gap-2">
+          <Info className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+          <div>
+            <strong>Local Internal Run:</strong> Source and destination are located at the same node (<code className="font-bold">{sourceNode}</code>). The cable does not traverse external cable trays and has 0 m tray length.
+          </div>
+        </div>
+      ) : route && route.status === 'UNROUTED' ? (
+        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 font-bold text-rose-800">
+            <AlertCircle className="w-4 h-4 text-rose-600" />
+            Unrouted Cable: No Continuous Tray Path Found
+          </div>
+          <p className="text-rose-700">
+            {route.unrouted_reason || `Could not find a valid tray path from node "${sourceNode}" to "${destNode}". Verify that branches connecting these nodes exist and elevation risers connect any different levels.`}
+          </p>
+        </div>
+      ) : (
+        <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs flex items-center gap-2">
+          <Info className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <span>
+            Route path will be calculated automatically when you click <strong>Run Sizing Calculation</strong> in the top header.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface CablesTableProps {
   cables: Cable[];
   branches: Branch[];
@@ -159,6 +394,19 @@ export function CablesTable({
     pageSize: 10,
   });
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
+
+  const toggleRowExpansion = useCallback((rowId: string) => {
+    setExpandedRowIds(prev => {
+      const next = new Set(prev);
+      if (next.has(rowId)) {
+        next.delete(rowId);
+      } else {
+        next.add(rowId);
+      }
+      return next;
+    });
+  }, []);
 
   // Restore saved page size preference from localStorage
   useEffect(() => {
@@ -354,6 +602,36 @@ export function CablesTable({
   const routeMapRef = useRef(routeMap);
   routeMapRef.current = routeMap;
 
+  const getCableRoute = useCallback(
+    (cable: Cable, originalIdx: number): CableRoutingResult | undefined => {
+      const results = routingResultsRef.current;
+      let route: CableRoutingResult | undefined;
+
+      // 1. Direct index match (1:1 alignment with cables array)
+      if (originalIdx >= 0 && originalIdx < results.length) {
+        const candidate = results[originalIdx];
+        if (candidate && candidate.cable_tag === cable.cable_tag) {
+          route = candidate;
+        }
+      }
+
+      // 2. Composite key match (tag + source_node + dest_node)
+      if (!route) {
+        const s = (cable.source_node || '').trim();
+        const d = (cable.dest_node || '').trim();
+        route = routeMapRef.current.get(`${cable.cable_tag}:::${s}:::${d}`);
+      }
+
+      // 3. Fallback to tag match
+      if (!route) {
+        route = routeMapRef.current.get(cable.cable_tag);
+      }
+
+      return route;
+    },
+    []
+  );
+
   const filteredCables = useMemo(() => {
     return cables.filter(c => {
       const cat = (c.category || guessCableCategory(c.cable_type)).toLowerCase();
@@ -484,10 +762,26 @@ export function CablesTable({
         cell: ({ row }) => {
           const rawTag = (row.original.cable_tag || '').trim();
           const isDuplicate = Boolean(rawTag) && duplicateTagsSetRef.current.has(rawTag);
+          const isExpanded = expandedRowIds.has(row.id);
 
           return (
             <div className="space-y-0.5">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    toggleRowExpansion(row.id);
+                  }}
+                  className={`h-5 w-5 rounded flex items-center justify-center transition-colors border shrink-0 ${
+                    isExpanded
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-2xs hover:bg-blue-700'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+                  }`}
+                  title={isExpanded ? 'Hide cable route' : 'Show cable route'}
+                >
+                  {isExpanded ? <Minus className="h-3 w-3 stroke-[2.5]" /> : <Plus className="h-3 w-3 stroke-[2.5]" />}
+                </button>
                 <EditableCellInput
                   value={row.original.cable_tag}
                   onSave={newTag => {
@@ -496,12 +790,12 @@ export function CablesTable({
                       onUpdateCableRef.current(idx, { ...row.original, cable_tag: newTag });
                     }
                   }}
-                  className="font-mono text-xs font-semibold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white px-1 py-0.5 rounded outline-none w-32"
+                  className="font-mono text-xs font-semibold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white px-1 py-0.5 rounded outline-none w-28"
                 />
               </div>
               {isDuplicate && (
                 <div
-                  className="flex items-center gap-1 pl-0.5"
+                  className="flex items-center gap-1 pl-6.5"
                   title={`Tag '${rawTag}' appears multiple times in schedule. Routing is disambiguated by row and endpoints.`}
                 >
                   <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-300/80 font-mono text-[9px] font-semibold">
@@ -838,28 +1132,7 @@ export function CablesTable({
         header: 'Route Status',
         cell: ({ row }) => {
           const originalIdx = cablesRef.current.indexOf(row.original);
-          const results = routingResultsRef.current;
-          let route: CableRoutingResult | undefined;
-
-          // 1. Direct index match (1:1 alignment with cables array)
-          if (originalIdx >= 0 && originalIdx < results.length) {
-            const candidate = results[originalIdx];
-            if (candidate && candidate.cable_tag === row.original.cable_tag) {
-              route = candidate;
-            }
-          }
-
-          // 2. Composite key match (tag + source_node + dest_node)
-          if (!route) {
-            const s = (row.original.source_node || '').trim();
-            const d = (row.original.dest_node || '').trim();
-            route = routeMapRef.current.get(`${row.original.cable_tag}:::${s}:::${d}`);
-          }
-
-          // 3. Fallback to tag match
-          if (!route) {
-            route = routeMapRef.current.get(row.original.cable_tag);
-          }
+          const route = getCableRoute(row.original, originalIdx);
 
           if (!route) {
             return <Badge variant="secondary" className="text-[10px]">Uncalculated</Badge>;
@@ -925,8 +1198,8 @@ export function CablesTable({
         },
       },
     ],
-    // Only recompute columns when selection changes (does not recompute on typing!)
-    [selectedIndices, isAllFilteredSelected, isSomeFilteredSelected]
+    // Recompute columns when selection or row expansion changes (does not recompute on typing!)
+    [selectedIndices, isAllFilteredSelected, isSomeFilteredSelected, expandedRowIds, toggleRowExpansion, getCableRoute]
   );
 
   const table = useReactTable({
@@ -1111,17 +1384,37 @@ export function CablesTable({
               table.getRowModel().rows.map(row => {
                 const originalIdx = cablesRef.current.indexOf(row.original);
                 const isSelected = selectedIndices.has(originalIdx);
+                const isExpanded = expandedRowIds.has(row.id);
+                const route = getCableRoute(row.original, originalIdx);
                 return (
-                  <TableRow
-                    key={row.id}
-                    className={isSelected ? 'bg-blue-50/70 hover:bg-blue-50/90' : undefined}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id} className="text-xs py-2">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                  <React.Fragment key={row.id}>
+                    <TableRow
+                      className={
+                        isSelected
+                          ? 'bg-blue-50/70 hover:bg-blue-50/90'
+                          : isExpanded
+                          ? 'bg-blue-50/30 border-b-0'
+                          : undefined
+                      }
+                    >
+                      {row.getVisibleCells().map(cell => (
+                        <TableCell key={cell.id} className="text-xs py-2">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b-2 border-slate-200">
+                        <TableCell colSpan={columns.length} className="p-3">
+                          <CableRouteExpandedView
+                            cable={row.original}
+                            route={route}
+                            branches={branches}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 );
               })
             ) : (

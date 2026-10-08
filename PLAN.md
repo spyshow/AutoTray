@@ -1,58 +1,49 @@
-# PLAN: Filterable Select Input (Combobox) for From Node & To Node from Cable List
+# PLAN: Expandable Cable Route Path Under Row via '+' Button
 
 ## 1. Goal
-When adding or editing cable tray branches in the **Branches & Risers** table, the "From Node" (`node_from`) and "To Node" (`node_to`) inputs should be a searchable/filterable select input (combobox). The selectable options must be dynamically populated from the cable list's "Source (From Node)" and "Destination (To Node)" (plus existing branch junction nodes). Users can type to filter options, pick an existing node with one click or Enter, or freely enter a custom node name. The same intelligent node completion is also made available to the **Cables Schedule** table for end-to-end consistency.
+In the **Cables Schedule** table (`CablesTable`), add an interactive `+` / `−` toggle button next to each **Cable Tag**. When clicked, it expands a detailed card directly beneath the table row displaying the complete cable route from **Source Node** to **Destination Node**. This includes the sequence of intermediate nodes, tray branch segments, elevation levels, total routed length, and diagnostic warnings if the cable is unrouted.
 
 ---
 
 ## 2. Technical Architecture & Analysis
-1. **Dynamic Node Options Collection**:
-   - In `BranchesTable`, derive `availableNodeOptions` from:
-     - `cables.flatMap(c => [c.source_node?.trim(), c.dest_node?.trim()])`
-     - `branches.flatMap(b => [b.node_from?.trim(), b.node_to?.trim()])`
-   - Filter out empty strings, normalize, deduplicate, and sort alphabetically with natural order.
-2. **Inline Filterable Combobox (`NodeComboboxCell`)**:
-   - Provide an input field that displays the current node value and preserves the table's clean look and feel.
-   - When focused or clicked, opens a floating dropdown listing matching node options filtered by user input.
-   - Displays a clean badge/counter (e.g., node name, tag).
-   - Allows keyboard navigation (ArrowUp, ArrowDown, Enter, Escape).
-   - Allows free-form typing so intermediate junction nodes (e.g. `J01`, `NODE_5`) not in the cable list can still be entered without limitation.
-   - Commits changes via `onSave(newValue)` when an item is selected or when blurred/submitted.
-3. **Data Flow**:
-   - Pass `cables={cables}` to `BranchesTable` in `frontend/src/app/page.tsx`.
-   - In `frontend/src/components/branches-table.tsx`, replace `EditableCellInput` for `node_from` and `node_to` with `NodeComboboxCell`.
-   - In `frontend/src/components/cables-table.tsx`, enhance `source_node` and `dest_node` with `NodeComboboxCell` while retaining existing validation alerts.
+1. **Row Expansion State**:
+   - In `CablesTable`, track `expandedRowIds: Set<string>` in component state.
+   - A toggle handler switches the row ID in/out of the set.
+2. **`+` / `−` Sign Toggle in Cable Tag Column**:
+   - In the `cable_tag` column cell, place a small, high-affordance `Button` with a `+` (collapsed) or `−` (expanded) icon immediately to the left or right of the tag input.
+   - Styled cleanly so it does not interfere with the tag editing or sorting.
+3. **Expandable Route Container (`<TableRow>` & `<div>`)**:
+   - Render a sub-row `<TableRow className="bg-slate-50/80 ...">` spanning all columns (`colSpan={columns.length}`).
+   - Look up the cable's `CableRoutingResult` using the composite key / index matcher.
+   - If `status === 'ROUTED'`:
+     - Visual flow path: `[Source Node]` ➔ `(Segment BR_01)` ➔ `[Node]` ➔ `(Segment BR_02)` ➔ ... ➔ `[Destination Node]`.
+     - Route summary cards: Total length (m), Traversed tray segments count, Elevation levels visited.
+   - If `status === 'LOCAL'`:
+     - Badge & message: "Internal connection within node [X] (0 m length)".
+   - If `status === 'UNROUTED'`:
+     - Diagnostic banner explaining why the route failed (e.g. disconnected components, missing bridge riser, or unknown endpoint).
+   - If uncalculated:
+     - Friendly helper prompting the user to run the network calculation.
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 1: Create `NodeComboboxCell` Component
-- Create `frontend/src/components/node-combobox-cell.tsx`:
-  - Input field with subtle dropdown toggle indicator (chevron).
-  - Floating portal/popover with z-index (`z-50`) to avoid clipping by table rows.
-  - Live filtering against `options: string[]`.
-  - Highlight matching substrings or show clean list.
-  - Keyboard accessibility (Arrow navigation, Enter selection, Escape dismiss).
-- **Proof it works**: Component renders, filters options correctly based on query, and invokes `onSave` when an option is clicked or typed.
+### Step 1: Add Expansion State & `+` Toggle Button in `cables-table.tsx` - COMPLETED
+- Added `expandedRowIds` Set state and `toggleRowExpansion` handler.
+- Integrated `+` / `−` icon button inside the `cable_tag` column cell.
+- Added `expandedRowIds` to `columns` memoization dependencies so button toggles immediately.
 
-### Step 2: Update `page.tsx` & `BranchesTable`
-- In `frontend/src/app/page.tsx`:
-  - Pass `cables={cables}` to `<BranchesTable ... />`.
-- In `frontend/src/components/branches-table.tsx`:
-  - Accept `cables?: Cable[]` in props.
-  - Derive `nodeOptions` using `useMemo` from `cables` and `branches`.
-  - Replace `EditableCellInput` for `node_from` and `node_to` columns with `<NodeComboboxCell value={...} options={nodeOptions} onSave={...} />`.
-- **Proof it works**: Loading cables or branches immediately populates the "From Node" and "To Node" combobox options with cable source and destination nodes.
+### Step 2: Implement Detailed Cable Route View Under Row - COMPLETED
+- Implemented `CableRouteExpandedView` displaying:
+  - Source-to-destination node breadcrumbs with badges.
+  - Intermediate junction nodes and connecting branch segments.
+  - Traversed tray segments breakdown cards with lengths and levels.
+  - Diagnostic warnings for unrouted or local cables.
+- Rendered sub-row `<TableRow>` spanning all columns when `isExpanded` is true.
 
-### Step 3: Enhance `CablesTable` Node Fields
-- In `frontend/src/components/cables-table.tsx`:
-  - Derive `nodeOptions` from `branches` and `cables`.
-  - Use `NodeComboboxCell` for `source_node` and `dest_node` while preserving the validation warning icon (`AlertCircle`) and panel badge.
-- **Proof it works**: Editing cable endpoints in CablesTable allows selecting from known branch nodes.
+### Step 3: Verification & Automated Tests - COMPLETED
+- `npm test` in `frontend`: 103/103 tests passed.
+- `pytest` in `backend`: 45/45 tests passed.
+- `npm run build` in `frontend`: Next.js Turbopack production build succeeded with 0 errors.
 
-### Step 4: Verification & Automated Tests
-- Run `npm test` in `frontend` (all 101+ tests passing).
-- Run backend tests via `pytest` (all 45 tests passing).
-- Run `npm run build` in `frontend` to verify TypeScript types and production build.
-- **Proof it works**: Tests pass, build succeeds with 0 errors.

@@ -600,3 +600,97 @@ test('Node combobox options extractor: collects, deduplicates, and naturally sor
   assert.deepEqual(filteredN01, ['N011', 'N012', 'N015']);
 });
 
+test('Cable route resolution correctly resolves route path, segment details, and diagnostics for expandable row', () => {
+  const cables = [
+    { cable_tag: 'C_P01', source_node: 'N00', dest_node: 'N02', cable_type: '4x50 mm²', count: 1 },
+    { cable_tag: 'C_P02', source_node: 'N00', dest_node: 'N00', cable_type: '3x2.5 mm²', count: 1 },
+    { cable_tag: 'C_P03', source_node: 'N00', dest_node: 'ISOLATED_NODE', cable_type: '2x1.5 mm²', count: 1 },
+  ];
+
+  const branches = [
+    { branch_id: 'BR_01', node_from: 'N00', node_to: 'N01', level: 'Level 0', length_m: 10.0, branch_type: 'horizontal' },
+    { branch_id: 'BR_02', node_from: 'N01', node_to: 'N02', level: 'Level 1', length_m: 15.0, branch_type: 'vertical' },
+  ];
+
+  const routingResults = [
+    {
+      cable_tag: 'C_P01',
+      source_node: 'N00',
+      dest_node: 'N02',
+      status: 'ROUTED',
+      path_nodes: ['N00', 'N01', 'N02'],
+      path_branches: ['BR_01', 'BR_02'],
+      total_length_m: 25.0,
+    },
+    {
+      cable_tag: 'C_P02',
+      source_node: 'N00',
+      dest_node: 'N00',
+      status: 'LOCAL',
+      path_nodes: ['N00'],
+      path_branches: [],
+      total_length_m: 0,
+    },
+    {
+      cable_tag: 'C_P03',
+      source_node: 'N00',
+      dest_node: 'ISOLATED_NODE',
+      status: 'UNROUTED',
+      unrouted_reason: 'No path from N00 to ISOLATED_NODE',
+      path_nodes: [],
+      path_branches: [],
+      total_length_m: 0,
+    },
+  ];
+
+  // Route resolver helper matching getCableRoute in CablesTable
+  const routeMap = new Map();
+  routingResults.forEach(r => {
+    routeMap.set(`${r.cable_tag}:::${r.source_node}:::${r.dest_node}`, r);
+    if (!routeMap.has(r.cable_tag)) routeMap.set(r.cable_tag, r);
+  });
+
+  const getCableRoute = (cable, originalIdx) => {
+    if (originalIdx >= 0 && originalIdx < routingResults.length) {
+      const candidate = routingResults[originalIdx];
+      if (candidate && candidate.cable_tag === cable.cable_tag) return candidate;
+    }
+    const s = (cable.source_node || '').trim();
+    const d = (cable.dest_node || '').trim();
+    return routeMap.get(`${cable.cable_tag}:::${s}:::${d}`) || routeMap.get(cable.cable_tag);
+  };
+
+  // Test 1: ROUTED cable
+  const route1 = getCableRoute(cables[0], 0);
+  assert.ok(route1);
+  assert.equal(route1.status, 'ROUTED');
+  assert.equal(route1.total_length_m, 25.0);
+  assert.deepEqual(route1.path_nodes, ['N00', 'N01', 'N02']);
+  assert.deepEqual(route1.path_branches, ['BR_01', 'BR_02']);
+
+  // Test 2: LOCAL cable
+  const route2 = getCableRoute(cables[1], 1);
+  assert.ok(route2);
+  assert.equal(route2.status, 'LOCAL');
+  assert.equal(route2.total_length_m, 0);
+
+  // Test 3: UNROUTED cable
+  const route3 = getCableRoute(cables[2], 2);
+  assert.ok(route3);
+  assert.equal(route3.status, 'UNROUTED');
+  assert.ok(route3.unrouted_reason.includes('ISOLATED_NODE'));
+
+  // Test 4: Expansion state toggle logic
+  const expandedRows = new Set();
+  const toggleRow = id => {
+    if (expandedRows.has(id)) expandedRows.delete(id);
+    else expandedRows.add(id);
+  };
+
+  toggleRow('C_P01_0');
+  assert.ok(expandedRows.has('C_P01_0'));
+  toggleRow('C_P01_0');
+  assert.ok(!expandedRows.has('C_P01_0'));
+});
+
+
