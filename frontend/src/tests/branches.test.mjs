@@ -549,7 +549,7 @@ test('Node combobox options extractor: collects, deduplicates, and naturally sor
       if (t) set.add(t);
     });
     return Array.from(set).sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }) || a.localeCompare(b)
     );
   };
 
@@ -560,6 +560,7 @@ test('Node combobox options extractor: collects, deduplicates, and naturally sor
     { cable_tag: 'C4', source_node: 'N012', dest_node: 'P113' },
     { cable_tag: 'C5', source_node: 'N012', dest_node: 'P114' }, // Duplicate N012
     { cable_tag: 'C6', source_node: '  ', dest_node: 'MDB_1' }, // Empty whitespace source
+    { cable_tag: 'C7', source_node: 'N24', dest_node: 'N024' }, // Distinct nodes differing only by zero-padding
   ];
 
   const sampleBranches = [
@@ -573,6 +574,8 @@ test('Node combobox options extractor: collects, deduplicates, and naturally sor
   assert.ok(options.includes('N015'));
   assert.ok(options.includes('N011'));
   assert.ok(options.includes('N012'));
+  assert.ok(options.includes('N024'));
+  assert.ok(options.includes('N24'));
   assert.ok(options.includes('P111'));
   assert.ok(options.includes('P112'));
   assert.ok(options.includes('P113'));
@@ -580,6 +583,10 @@ test('Node combobox options extractor: collects, deduplicates, and naturally sor
   assert.ok(options.includes('P116'));
   assert.ok(options.includes('MDB_1'));
   assert.ok(options.includes('J01'));
+
+  // Must treat N024 and N24 as distinct entities and preserve deterministic order
+  const n24Group = options.filter(o => o === 'N024' || o === 'N24');
+  assert.deepEqual(n24Group, ['N024', 'N24']);
 
   // Must deduplicate N012 and N022
   assert.equal(options.filter(o => o === 'N012').length, 1);

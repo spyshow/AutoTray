@@ -39,7 +39,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { calculateSizingApi, exportExcelApi, downloadSampleTemplateApi } from '@/lib/api';
 import { solveRoutingAndSizingClient } from '@/lib/client-calculator';
 import { lookupCatalogCableOd } from '@/lib/cable-catalog';
-import { createSampleWorkbookBlob, normalizeCableSpec } from '@/lib/excel';
+import { createSampleWorkbookBlob, normalizeCableSpec, stripCableSpecUnits } from '@/lib/excel';
 import {
   LayoutDashboard,
   Cable as CableIcon,
@@ -394,7 +394,16 @@ export default function AutoTrayRouterPage() {
       const rawSpec = String(c.cable_type || '').trim();
       if (!rawSpec) return false;
       const spec = normalizeCableSpec(rawSpec) || rawSpec;
-      return !customRules[spec] && !customRules[rawSpec] && !lookupCatalogCableOd(spec) && !lookupCatalogCableOd(rawSpec);
+      const cleanSpec = stripCableSpecUnits(spec);
+      const hasRule = Boolean(
+        customRules[cleanSpec] ||
+        customRules[spec] ||
+        customRules[rawSpec] ||
+        Object.entries(customRules).find(
+          ([k]) => stripCableSpecUnits(k).toLowerCase() === cleanSpec.toLowerCase()
+        )
+      );
+      return !hasRule && !lookupCatalogCableOd(cleanSpec) && !lookupCatalogCableOd(spec) && !lookupCatalogCableOd(rawSpec);
     });
 
     if (unconfigured.length > 0) {
@@ -665,6 +674,8 @@ export default function AutoTrayRouterPage() {
               onApplyAndRecalculate={runCalculation}
               onLoadDemoData={handlePopulateCurrentProjectWithDemo}
               onDownloadSampleTemplate={handleDownloadSampleTemplate}
+              cables={cables}
+              onUpdateCables={setCables}
             />
           </TabsContent>
         </Tabs>

@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Cable, CableCategory, CalculationParameters } from '@/lib/types';
 import { lookupCatalogCableOd } from '@/lib/cable-catalog';
-import { guessCableCategory, normalizeCableSpec } from '@/lib/excel';
+import { guessCableCategory, normalizeCableSpec, stripCableSpecUnits } from '@/lib/excel';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -145,7 +145,9 @@ export function MissingSpecOdModal({
     Object.entries(specsData).forEach(([spec, data]) => {
       const parsed = parseFloat(data.od);
       if (!isNaN(parsed) && parsed > 0) {
-        nextCustomRules[spec] = parsed;
+        const cleanSpec = stripCableSpecUnits(spec) || spec;
+        nextCustomRules[cleanSpec] = parsed;
+        specToOdMap[cleanSpec] = parsed;
         specToOdMap[spec] = parsed;
       }
     });
@@ -154,12 +156,13 @@ export function MissingSpecOdModal({
     const updatedCables = cables.map(c => {
       const rawSpec = String(c.cable_type || '').trim();
       const spec = normalizeCableSpec(rawSpec) || rawSpec;
-      if (specToOdMap[spec] !== undefined || specToOdMap[rawSpec] !== undefined) {
-        const od = specToOdMap[spec] !== undefined ? specToOdMap[spec] : specToOdMap[rawSpec];
-        const cat = specsData[spec]?.category || specsData[rawSpec]?.category || c.category;
+      const cleanSpec = stripCableSpecUnits(spec);
+      if (specToOdMap[cleanSpec] !== undefined || specToOdMap[spec] !== undefined || specToOdMap[rawSpec] !== undefined) {
+        const od = specToOdMap[cleanSpec] !== undefined ? specToOdMap[cleanSpec] : (specToOdMap[spec] !== undefined ? specToOdMap[spec] : specToOdMap[rawSpec]);
+        const cat = specsData[cleanSpec]?.category || specsData[spec]?.category || specsData[rawSpec]?.category || c.category;
         return {
           ...c,
-          cable_type: spec,
+          cable_type: cleanSpec,
           od_mm: od,
           category: cat,
         };
@@ -232,7 +235,12 @@ export function MissingSpecOdModal({
                   return (
                     <tr key={item.spec} className="hover:bg-slate-50 transition-colors">
                       <td className="py-2 px-3 font-mono font-bold text-slate-900">
-                        {item.spec}
+                        <div className="flex items-center gap-1.5">
+                          <span>{item.spec}</span>
+                          {/(?:^|[^\d])\d+\s*(?:[xX*×Gg\/])\s*[\d\.]+/i.test(item.spec) && (
+                            <span className="text-[10px] text-slate-400 font-sans font-normal">mm²</span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2 px-2">
                         <Badge variant="outline" className="bg-slate-50 text-[11px] font-normal text-slate-600">

@@ -178,8 +178,9 @@ export function calculateNetworkNodeFittings(
     });
   });
 
-  // Sort nodes naturally by Node ID
-  return calculatedNodes.sort((a, b) => a.node_id.localeCompare(b.node_id, undefined, { numeric: true }));
+  return calculatedNodes.sort((a, b) =>
+    a.node_id.localeCompare(b.node_id, undefined, { numeric: true }) || a.node_id.localeCompare(b.node_id)
+  );
 }
 
 /**

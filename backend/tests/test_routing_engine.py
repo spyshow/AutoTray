@@ -1,6 +1,6 @@
 import pytest
 from app.models import CalculationParameters, Branch, Cable, BranchStatus
-from app.routing_engine import solve_routing_and_sizing, STANDARD_COMMERCIAL_WIDTHS
+from app.routing_engine import solve_routing_and_sizing, STANDARD_COMMERCIAL_WIDTHS, find_node_suggestion
 
 
 def test_standard_commercial_widths_list():
@@ -480,6 +480,32 @@ def test_unrouted_cable_typo_suggestion():
     assert "C_ERR" in resp.summary.unrouted_cables
     assert resp.cables[0].status == "UNROUTED"
     assert "P108" in resp.cables[0].unrouted_reason
+
+
+def test_node_zero_padding_distinct_not_suggested_as_typo():
+    """Verify nodes differing only in leading zero padding (e.g. N024 vs N24) are never suggested as typos."""
+    # Direct find_node_suggestion checks
+    assert find_node_suggestion("N024", {"N24"}) is None
+    assert find_node_suggestion("N24", {"N024"}) is None
+    assert find_node_suggestion("NODE_01", {"NODE_1"}) is None
+    assert find_node_suggestion("P01", {"P1"}) is None
+
+    # Legitimate typos are still suggested
+    assert find_node_suggestion("P181", {"P108"}) == "P108"
+    assert find_node_suggestion("N024", {"N025"}) == "N025"
+
+    # End-to-end check in routing engine: cable targeting N024 where only N24 exists in branches
+    branches = [
+        Branch(branch_id="BR_01", node_from="P101", node_to="N24", level="Level 1", length_m=10.0)
+    ]
+    cables = [
+        Cable(cable_tag="C_N024", source_node="P101", dest_node="N024", cable_type="power", od_mm=15.0)
+    ]
+    resp = solve_routing_and_sizing(CalculationParameters(), branches, cables)
+    assert resp.cables[0].status == "UNROUTED"
+    # Unrouted reason must NOT suggest N24 as a typo
+    assert "Did you mean 'N24'" not in resp.cables[0].unrouted_reason
+    assert "Endpoint missing in branch network: Dest 'N024'" in resp.cables[0].unrouted_reason
 
 
 def test_panel_preservation_and_diagnostics():

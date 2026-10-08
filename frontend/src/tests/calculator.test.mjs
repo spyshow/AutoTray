@@ -139,9 +139,14 @@ function levenshteinDist(s1, s2) {
   return prev[s2.length];
 }
 
+function stripLeadingZerosInNumbers(s) {
+  return s.replace(/(?<=\D)0+(?=\d)|^0+(?=\d)/g, '');
+}
+
 function findNodeSugg(target, existingNodes, exclude) {
   const targetClean = target.trim().toUpperCase();
   const excludeClean = exclude ? exclude.trim().toUpperCase() : null;
+  const targetNormalized = stripLeadingZerosInNumbers(targetClean);
   let bestCandidate = null;
   let minDist = 999;
   const sorted = Array.from(existingNodes).sort();
@@ -149,6 +154,12 @@ function findNodeSugg(target, existingNodes, exclude) {
     const nClean = n.trim().toUpperCase();
     if (excludeClean && nClean === excludeClean) continue;
     if (nClean === targetClean) return n;
+
+    // Do NOT treat intentional zero-padded nodes (e.g. N024 vs N24) as typos of each other
+    if (targetNormalized === stripLeadingZerosInNumbers(nClean)) {
+      continue;
+    }
+
     const d = levenshteinDist(targetClean, nClean);
     if (d <= 2 && d < minDist) {
       minDist = d;
@@ -158,6 +169,10 @@ function findNodeSugg(target, existingNodes, exclude) {
   if (!bestCandidate && excludeClean) {
     for (const n of sorted) {
       const nClean = n.trim().toUpperCase();
+      if (nClean === targetClean) return n;
+      if (targetNormalized === stripLeadingZerosInNumbers(nClean)) {
+        continue;
+      }
       const d = levenshteinDist(targetClean, nClean);
       if (d <= 2 && d < minDist) {
         minDist = d;
@@ -886,6 +901,31 @@ test('Typo in destination node provides smart suggestion hint (P181 -> P108)', (
   assert.equal(res.unrouted_cables[0], 'C_TYPO_1');
   assert.equal(res.cables[0].status, 'UNROUTED');
   assert.ok(res.cables[0].unrouted_reason.includes("Did you mean 'P108'?"));
+});
+
+test('Node N024 is strictly treated as different from N24 and never suggested as a typo', () => {
+  const existingNodes = new Set(['N24', 'P101', 'P108']);
+
+  // Target N024 must NOT suggest N24 (they differ only by zero-padding, distinct intentional nodes)
+  assert.equal(findNodeSugg('N024', existingNodes), null);
+  assert.equal(findNodeSugg('N24', new Set(['N024'])), null);
+
+  // Still suggests genuine typos (e.g. N024 with N025)
+  assert.equal(findNodeSugg('N024', new Set(['N025'])), 'N025');
+
+  // Full calculation verify: cable targeting N024 when only N24 exists does not say "Did you mean 'N24'?"
+  const params = { spare_margin_pct: 0, control_fill_pct: 40, default_tray_height_mm: 60 };
+  const branches = [
+    { branch_id: 'BR_N24', node_from: 'P101', node_to: 'N24', length_m: 10.0, branch_type: 'horizontal' },
+  ];
+  const cables = [
+    { cable_tag: 'C_N024', source_node: 'P101', dest_node: 'N024', cable_type: '4x1.5', count: 1, od_mm: 10.3 },
+  ];
+
+  const res = calculateBranchSizing(params, branches, cables);
+  assert.equal(res.unrouted_cables.length, 1);
+  assert.equal(res.cables[0].status, 'UNROUTED');
+  assert.ok(!res.cables[0].unrouted_reason.includes("Did you mean 'N24'?"), 'Must NOT suggest N24 for N024');
 });
 
 test('Same-node cable with self-loop branch routes onto that local tray branch', () => {

@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { CalculationParameters } from '@/lib/types';
+import { CalculationParameters, Cable } from '@/lib/types';
 import { STANDARD_COMMERCIAL_WIDTHS } from '@/lib/client-calculator';
 import {
   LOW_VOLTAGE_CABLE_CATALOG,
   lookupCatalogCableOd,
   CatalogCableItem,
 } from '@/lib/cable-catalog';
+import { stripCableSpecUnits } from '@/lib/excel';
 import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,8 @@ interface DefaultsSettingsTabProps {
   onApplyAndRecalculate: () => void;
   onLoadDemoData?: () => void;
   onDownloadSampleTemplate?: () => void;
+  cables?: Cable[];
+  onUpdateCables?: (cables: Cable[]) => void;
 }
 
 export const getCatalogItemKey = (item: CatalogCableItem): string => {
@@ -51,7 +54,7 @@ export const getCatalogItemKey = (item: CatalogCableItem): string => {
 };
 
 export const getCleanRuleKey = (item: CatalogCableItem): string => {
-  return item.designation.replace(/\s*mm².*$/, '').trim() || item.designation.trim();
+  return stripCableSpecUnits(item.designation) || item.designation.trim();
 };
 
 export function DefaultsSettingsTab({
@@ -60,6 +63,8 @@ export function DefaultsSettingsTab({
   onApplyAndRecalculate,
   onLoadDemoData,
   onDownloadSampleTemplate,
+  cables,
+  onUpdateCables,
 }: DefaultsSettingsTabProps) {
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeOd, setNewTypeOd] = useState('');
@@ -112,18 +117,42 @@ export function DefaultsSettingsTab({
 
   const customRules = parameters.custom_od_by_type || {};
 
-  const handleAddCustomRule = () => {
-    const trimmedName = newTypeName.trim();
-    const parsedOd = parseFloat(newTypeOd);
-    if (!trimmedName || isNaN(parsedOd) || parsedOd <= 0) return;
+  const syncCablesWithRule = (ruleKey: string, newOd: number) => {
+    if (!cables || !onUpdateCables || cables.length === 0) return;
+    const cleanRule = stripCableSpecUnits(ruleKey).toLowerCase();
+    let hasChanges = false;
+    const updated = cables.map(c => {
+      const cType = String(c.cable_type || '').trim().toLowerCase();
+      const cleanType = stripCableSpecUnits(cType);
+      if (cleanType === cleanRule || cType === cleanRule) {
+        if (c.od_mm !== newOd) {
+          hasChanges = true;
+          return { ...c, od_mm: newOd };
+        }
+      }
+      return c;
+    });
+    if (hasChanges) {
+      onUpdateCables(updated);
+    }
+  };
 
-    const nextCustom = { ...customRules, [trimmedName]: parsedOd };
+  const handleAddCustomRule = () => {
+    const rawName = newTypeName.trim();
+    const cleanName = stripCableSpecUnits(rawName) || rawName;
+    const parsedOd = parseFloat(newTypeOd);
+    if (!cleanName || isNaN(parsedOd) || parsedOd <= 0) return;
+
+    const nextCustom = { ...customRules, [cleanName]: parsedOd };
     onChangeParameters({
       ...parameters,
       custom_od_by_type: nextCustom,
     });
+    syncCablesWithRule(cleanName, parsedOd);
     setNewTypeName('');
     setNewTypeOd('');
+    setAddedRuleToast(`Added rule "${cleanName}" (${parsedOd} mm) & updated matching cables`);
+    setTimeout(() => setAddedRuleToast(null), 2500);
   };
 
   const handleAddCatalogToRules = (item: CatalogCableItem) => {
@@ -133,6 +162,7 @@ export function DefaultsSettingsTab({
       ...parameters,
       custom_od_by_type: nextCustom,
     });
+    syncCablesWithRule(cleanKey, item.od_mm);
     setAddedRuleToast(`Added "${cleanKey}" (${item.od_mm} mm) to Custom Rules`);
     setTimeout(() => setAddedRuleToast(null), 2500);
   };
@@ -145,6 +175,7 @@ export function DefaultsSettingsTab({
     selectedItems.forEach(item => {
       const cleanKey = getCleanRuleKey(item);
       nextCustom[cleanKey] = item.od_mm;
+      syncCablesWithRule(cleanKey, item.od_mm);
     });
 
     onChangeParameters({
@@ -153,7 +184,7 @@ export function DefaultsSettingsTab({
     });
 
     const count = selectedItems.length;
-    setAddedRuleToast(`Added ${count} cable${count > 1 ? 's' : ''} to Custom Rules!`);
+    setAddedRuleToast(`Added ${count} cable${count > 1 ? 's' : ''} to Custom Rules & updated cables!`);
     setTimeout(() => setAddedRuleToast(null), 3000);
     setSelectedCatalogKeys(new Set());
   };
@@ -889,7 +920,14 @@ export function DefaultsSettingsTab({
                   ) : (
                     Object.entries(customRules).map(([tName, tOd]) => (
                       <tr key={tName} className="hover:bg-slate-50/80">
-                        <td className="p-2.5 font-semibold text-slate-800">{tName}</td>
+                        <td className="p-2.5 font-semibold text-slate-800">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono">{tName}</span>
+                            {/(?:^|[^\d])\d+\s*(?:[xX*×Gg\/])\s*[\d\.]+/i.test(tName) && (
+                              <span className="text-[10px] text-slate-400 font-sans font-normal">mm²</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-2.5 font-mono text-blue-700 font-bold">{tOd} mm</td>
                         <td className="p-2.5 text-right">
                           <Button
@@ -911,13 +949,20 @@ export function DefaultsSettingsTab({
 
             {/* Add new rule form */}
             <div className="flex flex-col sm:flex-row items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <input
-                type="text"
-                placeholder="Type name (e.g. 10kV MV, Cat6A, 4x50)"
-                value={newTypeName}
-                onChange={e => setNewTypeName(e.target.value)}
-                className="flex-1 rounded border border-slate-300 p-1.5 text-xs bg-white w-full"
-              />
+              <div className="relative flex-1 w-full">
+                <input
+                  type="text"
+                  placeholder="Type name (e.g. 10kV MV, Cat6A, 4x50)"
+                  value={newTypeName}
+                  onChange={e => setNewTypeName(e.target.value)}
+                  className="w-full rounded border border-slate-300 p-1.5 text-xs bg-white pr-9"
+                />
+                {/(?:^|[^\d])\d+\s*(?:[xX*×Gg\/])\s*[\d\.]+/i.test(newTypeName) && (
+                  <span className="absolute right-2 top-1.5 text-[11px] font-semibold text-slate-400 pointer-events-none select-none">
+                    mm²
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-1.5 w-full sm:w-auto">
                 <input
                   type="number"

@@ -15,7 +15,7 @@ import {
 import { Cable, CableRoutingResult, Branch, CalculationParameters, CableCategory, CableFormation } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { lookupCatalogCableOd } from '@/lib/cable-catalog';
-import { guessCableCategory, normalizeCableSpec } from '@/lib/excel';
+import { guessCableCategory, normalizeCableSpec, stripCableSpecUnits } from '@/lib/excel';
 import { isSingleCorePower, getSingleCoreFormation } from '@/lib/client-calculator';
 import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Badge } from '@/components/ui/badge';
@@ -504,7 +504,7 @@ export function CablesTable({
       if (c.dest_node?.trim()) s.add(c.dest_node.trim());
     });
     return Array.from(s).sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }) || a.localeCompare(b)
     );
   }, [branches, cables]);
 
@@ -916,41 +916,64 @@ export function CablesTable({
         header: () => (
           <div>
             <div className="font-bold text-slate-800">Cable Spec / Type</div>
-            <div className="text-[10px] text-slate-400 font-normal">e.g. 4x1.5 mm², 4x50</div>
+            <div className="text-[10px] text-slate-400 font-normal">e.g. 4x1.5, 4x50, Cat6A</div>
           </div>
         ),
         cell: ({ row }) => {
           const rawSpec = String(row.original.cable_type || '').trim();
           const spec = normalizeCableSpec(rawSpec) || rawSpec;
-          const catalogOd = lookupCatalogCableOd(spec) || lookupCatalogCableOd(rawSpec);
+          const cleanSpec = stripCableSpecUnits(spec);
+          const catalogOd = lookupCatalogCableOd(cleanSpec) || lookupCatalogCableOd(spec) || lookupCatalogCableOd(rawSpec);
           const isCatalogMatched = catalogOd !== null && catalogOd > 0;
-          const customOd = parametersRef.current?.custom_od_by_type?.[spec] || parametersRef.current?.custom_od_by_type?.[rawSpec];
+          const customRules = parametersRef.current?.custom_od_by_type || {};
+          const customOd =
+            customRules[cleanSpec] ||
+            customRules[spec] ||
+            customRules[rawSpec] ||
+            Object.entries(customRules).find(
+              ([k]) => stripCableSpecUnits(k).toLowerCase() === cleanSpec.toLowerCase()
+            )?.[1];
           const hasCustomRule = customOd !== undefined && customOd > 0;
+          const isCrossSection = /(?:^|[^\d])\d+\s*(?:[xX*×Gg\/])\s*[\d\.]+/i.test(row.original.cable_type || '');
 
           return (
             <div className="space-y-0.5">
-              <EditableCellInput
-                value={row.original.cable_type}
-                placeholder="e.g. 4x1.5 mm²"
-                onSave={newType => {
-                  const idx = cablesRef.current.indexOf(row.original);
-                  if (idx !== -1) {
-                    const trimmed = String(newType).trim();
-                    const normalized = normalizeCableSpec(trimmed) || trimmed;
-                    const catOd = lookupCatalogCableOd(normalized) || lookupCatalogCableOd(trimmed);
-                    const custOd = parametersRef.current?.custom_od_by_type?.[normalized] || parametersRef.current?.custom_od_by_type?.[trimmed];
-                    const autoOd = (custOd && custOd > 0) ? custOd : (catOd && catOd > 0 ? catOd : undefined);
-                    const guessedCat = guessCableCategory(normalized);
-                    onUpdateCableRef.current(idx, {
-                      ...row.original,
-                      cable_type: normalized,
-                      category: row.original.category || guessedCat,
-                      ...(autoOd !== undefined ? { od_mm: autoOd } : {}),
-                    });
-                  }
-                }}
-                className="font-mono text-xs font-semibold text-slate-900 bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 px-1.5 py-0.5 rounded outline-none w-32 shadow-xs"
-              />
+              <div className="flex items-center gap-1">
+                <EditableCellInput
+                  value={row.original.cable_type}
+                  placeholder="e.g. 4x1.5"
+                  onSave={newType => {
+                    const idx = cablesRef.current.indexOf(row.original);
+                    if (idx !== -1) {
+                      const trimmed = String(newType).trim();
+                      const normalized = normalizeCableSpec(trimmed) || trimmed;
+                      const cleanNorm = stripCableSpecUnits(normalized);
+                      const catOd = lookupCatalogCableOd(cleanNorm) || lookupCatalogCableOd(normalized);
+                      const rules = parametersRef.current?.custom_od_by_type || {};
+                      const custOd =
+                        rules[cleanNorm] ||
+                        rules[normalized] ||
+                        Object.entries(rules).find(
+                          ([k]) => stripCableSpecUnits(k).toLowerCase() === cleanNorm.toLowerCase()
+                        )?.[1];
+                      const autoOd = (custOd && custOd > 0) ? custOd : (catOd && catOd > 0 ? catOd : undefined);
+                      const guessedCat = guessCableCategory(cleanNorm);
+                      onUpdateCableRef.current(idx, {
+                        ...row.original,
+                        cable_type: cleanNorm,
+                        category: row.original.category || guessedCat,
+                        ...(autoOd !== undefined ? { od_mm: autoOd } : {}),
+                      });
+                    }
+                  }}
+                  className="font-mono text-xs font-semibold text-slate-900 bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 px-1.5 py-0.5 rounded outline-none w-24 shadow-xs"
+                />
+                {isCrossSection && (
+                  <span className="text-[11px] font-semibold text-slate-400 select-none">
+                    mm²
+                  </span>
+                )}
+              </div>
               {isCatalogMatched ? (
                 <div className="flex items-center gap-1 text-[9px] text-blue-600 font-medium">
                   <Sparkles className="h-2.5 w-2.5 text-blue-500 shrink-0" />
@@ -961,10 +984,10 @@ export function CablesTable({
                   <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
                   <span>Rule: {customOd} mm</span>
                 </div>
-              ) : spec ? (
+              ) : cleanSpec ? (
                 <button
                   type="button"
-                  onClick={() => onOpenMissingSpecModal?.(spec)}
+                  onClick={() => onOpenMissingSpecModal?.(cleanSpec)}
                   className="inline-flex items-center gap-1 text-[9px] text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-1 py-0.5 rounded font-medium transition cursor-pointer"
                   title="Click to enter Outer Diameter for this spec in the Rules Modal"
                 >
@@ -1223,8 +1246,17 @@ export function CablesTable({
       const rawSpec = String(c.cable_type || '').trim();
       if (!rawSpec) return;
       const spec = normalizeCableSpec(rawSpec) || rawSpec;
-      if (!customRules[spec] && !customRules[rawSpec] && !lookupCatalogCableOd(spec) && !lookupCatalogCableOd(rawSpec)) {
-        unconfigured.add(spec);
+      const cleanSpec = stripCableSpecUnits(spec);
+      const hasRule = Boolean(
+        customRules[cleanSpec] ||
+        customRules[spec] ||
+        customRules[rawSpec] ||
+        Object.entries(customRules).find(
+          ([k]) => stripCableSpecUnits(k).toLowerCase() === cleanSpec.toLowerCase()
+        )
+      );
+      if (!hasRule && !lookupCatalogCableOd(cleanSpec) && !lookupCatalogCableOd(spec) && !lookupCatalogCableOd(rawSpec)) {
+        unconfigured.add(cleanSpec);
       }
     });
     return unconfigured.size;

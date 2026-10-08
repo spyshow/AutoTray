@@ -17,6 +17,7 @@ import {
   NodeFittingConfig,
 } from './types';
 import { lookupCatalogCableOd } from './cable-catalog';
+import { stripCableSpecUnits, guessCableCategory } from './excel';
 import { calculateNetworkNodeFittings, generateFittingsAndReducersBom } from './fittings-engine';
 import {
   resolveCableWeightKgM,
@@ -35,11 +36,13 @@ export function getEffectiveCableOd(cable: Cable, params: CalculationParameters)
 
   const rawType = String(cable.cable_type || '').trim();
   const lower = rawType.toLowerCase();
+  const cleanLower = stripCableSpecUnits(lower);
 
   if (params.custom_od_by_type) {
     for (const [k, v] of Object.entries(params.custom_od_by_type)) {
-      const kClean = k.trim().toLowerCase();
-      if ((kClean === lower || kClean.includes(lower) || lower.includes(kClean)) && v > 0) {
+      const kLower = k.trim().toLowerCase();
+      const kClean = stripCableSpecUnits(kLower);
+      if ((kClean === cleanLower || kLower === lower || kClean.includes(cleanLower) || cleanLower.includes(kClean)) && v > 0) {
         return v;
       }
     }
@@ -135,9 +138,14 @@ function levenshteinDistance(s1: string, s2: string): number {
   return prev[s2.length];
 }
 
+function stripLeadingZerosInNumbers(s: string): string {
+  return s.replace(/(?<=\D)0+(?=\d)|^0+(?=\d)/g, '');
+}
+
 function findNodeSuggestion(target: string, existingNodes: Set<string>, exclude?: string | null): string | null {
   const targetClean = target.trim().toUpperCase();
   const excludeClean = exclude ? exclude.trim().toUpperCase() : null;
+  const targetNormalized = stripLeadingZerosInNumbers(targetClean);
   let bestCandidate: string | null = null;
   let minDist = 999;
   const sortedNodes = Array.from(existingNodes).sort();
@@ -145,6 +153,12 @@ function findNodeSuggestion(target: string, existingNodes: Set<string>, exclude?
     const nClean = n.trim().toUpperCase();
     if (excludeClean && nClean === excludeClean) continue;
     if (nClean === targetClean) return n;
+
+    // Do NOT treat intentional zero-padded nodes (e.g. N024 vs N24) as typos of each other
+    if (targetNormalized === stripLeadingZerosInNumbers(nClean)) {
+      continue;
+    }
+
     const d = levenshteinDistance(targetClean, nClean);
     if (d <= 2 && d < minDist) {
       minDist = d;
@@ -154,6 +168,10 @@ function findNodeSuggestion(target: string, existingNodes: Set<string>, exclude?
   if (!bestCandidate && excludeClean) {
     for (const n of sortedNodes) {
       const nClean = n.trim().toUpperCase();
+      if (nClean === targetClean) return n;
+      if (targetNormalized === stripLeadingZerosInNumbers(nClean)) {
+        continue;
+      }
       const d = levenshteinDistance(targetClean, nClean);
       if (d <= 2 && d < minDist) {
         minDist = d;
@@ -413,17 +431,7 @@ export function solveRoutingAndSizingClient(
 
     const getCategory = (c: Cable): string => {
       if (c.category) return c.category.toLowerCase();
-      const s = c.cable_type.trim().toLowerCase();
-      if (/pwr|power|feeder|motor|mv|lv|400v|1kv|volt/.test(s)) return 'power';
-      if (/data|bus|eth|net|cat|fiber|prof|modbus|fieldbus/.test(s)) return 'data';
-      if (/ctrl|control|24v|sig|signal|sensor|inst/.test(s)) return 'control';
-      const m = s.match(/(?:(\d+)\s*(?:c|core|cores)?\s*(?:[xX\*\/])\s*(\d+(?:\.\d+)?))/i);
-      if (m) {
-        const cores = parseInt(m[1], 10);
-        const size = parseFloat(m[2]);
-        if ([3, 4, 5].includes(cores) && size >= 6.0) return 'power';
-      }
-      return 'control';
+      return guessCableCategory(c.cable_type);
     };
 
     const pwr = routedList.filter(c => getCategory(c) === 'power');

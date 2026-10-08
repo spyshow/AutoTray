@@ -34,20 +34,11 @@ function findBestHeaderMatch(headers, patterns) {
 }
 
 function guessCableCategory(rawType) {
-  const s = String(rawType || '').trim().toLowerCase();
-  if (
-    s.includes('pwr') ||
-    s.includes('power') ||
-    s.includes('volt') ||
-    s.includes('feeder') ||
-    s.includes('motor') ||
-    s.includes('400v') ||
-    s.includes('mv') ||
-    s.includes('lv') ||
-    s.includes('high voltage')
-  ) {
-    return 'power';
-  }
+  let s = String(rawType || '').trim().toLowerCase();
+  if (!s) return 'control';
+
+  s = s.replace(/(\d+),(\d+)/g, '$1.$2');
+
   if (
     s.includes('data') ||
     s.includes('bus') ||
@@ -61,7 +52,61 @@ function guessCableCategory(rawType) {
   ) {
     return 'data';
   }
+
+  if (
+    s.includes('pwr') ||
+    s.includes('power') ||
+    s.includes('volt') ||
+    s.includes('feeder') ||
+    s.includes('motor') ||
+    s.includes('400v') ||
+    s.includes('mv') ||
+    s.includes('lv') ||
+    s.includes('high voltage') ||
+    s.includes('1kv')
+  ) {
+    return 'power';
+  }
+
+  const pairRegex = /(\d+)\s*[xX*×]\s*(\d+)\s*(?:[xX*×Gg]+|\s+)\s*([\d\.]+)/;
+  const mPair = s.match(pairRegex);
+  if (mPair) {
+    const pairSize = parseFloat(mPair[3]);
+    if (!isNaN(pairSize) && pairSize > 1.5) {
+      return 'power';
+    }
+    return 'data';
+  }
+
+  const coreSizeRegex = /(?:^|[^\d])(\d+)\s*(?:c|core|cores)?\s*(?:[gG]\s*[xX*×]?|[xX*×]{1,2}|[\*×\/])\s*(\d+(?:\.\d+)?)/i;
+  const mCore = s.match(coreSizeRegex);
+  if (mCore) {
+    const size = parseFloat(mCore[2]);
+    if (!isNaN(size) && size > 1.5) {
+      return 'power';
+    }
+    return 'control';
+  }
+
+  const singleAreaRegex = /(?:^|[^\d])(\d+(?:\.\d+)?)\s*(?:mm2|sqmm|mm²|\bmm\b)/i;
+  const mArea = s.match(singleAreaRegex);
+  if (mArea) {
+    const size = parseFloat(mArea[1]);
+    if (!isNaN(size) && size > 1.5) {
+      return 'power';
+    }
+    return 'control';
+  }
+
   return 'control';
+}
+
+export function stripCableSpecUnits(rawSpec) {
+  if (!rawSpec) return '';
+  return String(rawSpec)
+    .trim()
+    .replace(/\s*(?:mm²|mm2|sqmm|\bmm\b)\s*$/i, '')
+    .trim();
 }
 
 export function normalizeCableSpec(rawSpec) {
@@ -72,16 +117,16 @@ export function normalizeCableSpec(rawSpec) {
   const pairRegex = /(\d+)\s*[xX*×]\s*(\d+)\s*(?:[xX*×Gg]+|\s+)\s*([\d\.]+)/;
   const mPair = s.match(pairRegex);
   if (mPair) {
-    return `${mPair[1]}x${mPair[2]}x${mPair[3]} mm²`;
+    return `${mPair[1]}x${mPair[2]}x${mPair[3]}`;
   }
 
   const coreSizeRegex = /(?:^|[^\d])(\d+)\s*(?:c|core|cores)?\s*(?:[gG]\s*[xX*×]?|[xX*×]{1,2}|[\*×\/])\s*([\d\.]+)/i;
   const m = s.match(coreSizeRegex);
   if (m) {
-    return `${m[1]}x${m[2]} mm²`;
+    return `${m[1]}x${m[2]}`;
   }
 
-  return s;
+  return stripCableSpecUnits(s);
 }
 
 export function normalizeIecNode(rawVal, panelVal, groupByDropPoint = true) {
@@ -213,13 +258,13 @@ function mapRawDataToCables(
       const cVal = row[coresIdx] !== undefined ? String(row[coresIdx]).trim() : '';
       const sVal = row[sizeIdx] !== undefined ? String(row[sizeIdx]).trim().replace(/,/g, '.').replace(/mm²|sqmm|mm2/gi, '').trim() : '';
       if (cVal && sVal) {
-        rawType = `${cVal}x${sVal} mm²`;
+        rawType = `${cVal}x${sVal}`;
       }
     } else if (coresIdx !== -1 && sizeIdx === -1 && rawType) {
       const cVal = row[coresIdx] !== undefined ? String(row[coresIdx]).trim() : '';
       const sizeMatch = rawType.match(/^(\d+(?:\.\d+)?)\s*(?:mm²|sqmm|mm2)?$/i);
       if (cVal && sizeMatch) {
-        rawType = `${cVal}x${sizeMatch[1]} mm²`;
+        rawType = `${cVal}x${sizeMatch[1]}`;
       }
     } else if (coresIdx === -1 && sizeIdx !== -1 && countIdx !== -1) {
       const cVal = row[countIdx] !== undefined ? String(row[countIdx]).trim() : '';
@@ -227,7 +272,7 @@ function mapRawDataToCables(
       const cNum = parseInt(cVal, 10);
       const sNum = parseFloat(sVal);
       if (!isNaN(cNum) && cNum >= 1 && cNum <= 12 && !isNaN(sNum) && sNum > 0) {
-        rawType = `${cNum}x${sVal} mm²`;
+        rawType = `${cNum}x${sVal}`;
         usedCountAsCores = true;
       }
     }
@@ -254,10 +299,12 @@ function mapRawDataToCables(
 
     if (od_mm === undefined && defaultOdMap) {
       const lowerRaw = rawType.toLowerCase();
+      const rawClean = stripCableSpecUnits(lowerRaw);
       if (defaultOdMap.custom) {
         for (const [k, v] of Object.entries(defaultOdMap.custom)) {
           const kLower = k.toLowerCase().trim();
-          if ((kLower === lowerRaw || kLower.includes(lowerRaw) || lowerRaw.includes(kLower)) && v > 0) {
+          const kClean = stripCableSpecUnits(kLower);
+          if ((kClean === rawClean || kLower === lowerRaw || kLower.includes(lowerRaw) || lowerRaw.includes(kLower)) && v > 0) {
             od_mm = v;
             break;
           }
@@ -348,6 +395,27 @@ test('Cable Category Normalization covers industrial designations', () => {
   assert.equal(guessCableCategory('Thermocouple Type K'), 'control');
   assert.equal(guessCableCategory('4-20mA Pressure Sig'), 'control');
   assert.equal(guessCableCategory('24VDC Solenoid Control'), 'control');
+
+  // Conductor cross-section size > 1.5 mm² defaults to power
+  assert.equal(guessCableCategory('1X 95mm²'), 'power');
+  assert.equal(guessCableCategory('1G 50mm²'), 'power');
+  assert.equal(guessCableCategory('1X 185mm²'), 'power');
+  assert.equal(guessCableCategory('1G 25mm²'), 'power');
+  assert.equal(guessCableCategory('5G 10mm²'), 'power');
+  assert.equal(guessCableCategory('4x2.5'), 'power');
+  assert.equal(guessCableCategory('3x4'), 'power');
+  assert.equal(guessCableCategory('4x50'), 'power');
+  assert.equal(guessCableCategory('1x240'), 'power');
+  assert.equal(guessCableCategory('95mm²'), 'power');
+
+  // Conductor cross-section size <= 1.5 mm² defaults to control (or data for multi-pair)
+  assert.equal(guessCableCategory('3G 1,5mm²'), 'control');
+  assert.equal(guessCableCategory('5G 1,5mm²'), 'control');
+  assert.equal(guessCableCategory('4G 1,5mm²'), 'control');
+  assert.equal(guessCableCategory('12x1.5'), 'control');
+  assert.equal(guessCableCategory('18Gx0,75 mm²'), 'control');
+  assert.equal(guessCableCategory('2x0.5'), 'control');
+  assert.equal(guessCableCategory('4x2 0,56mm²'), 'data');
 });
 
 test('mapRawDataToCables populates default OD when OD column is unmapped', () => {
@@ -428,15 +496,15 @@ test('mapRawDataToCables auto-combines separate cores and size into 4x1.5 mm² w
   const cables = mapRawDataToCables(rawRows, 0, mapping);
   assert.equal(cables.length, 2);
 
-  // Row 1: 4 cores x 1.5 -> "4x1.5 mm²", OD 10.3 from catalog, count 1
+  // Row 1: 4 cores x 1.5 -> "4x1.5", OD 10.3 from catalog, count 1
   assert.equal(cables[0].cable_tag, 'C101');
-  assert.equal(cables[0].cable_type, '4x1.5 mm²');
+  assert.equal(cables[0].cable_type, '4x1.5');
   assert.equal(cables[0].od_mm, 10.3);
   assert.equal(cables[0].count, 1);
 
-  // Row 2: 4 cores x 50 mm² -> "4x50 mm²", OD 32.1 from catalog, count 2
+  // Row 2: 4 cores x 50 mm² -> "4x50", OD 32.1 from catalog, count 2
   assert.equal(cables[1].cable_tag, 'C102');
-  assert.equal(cables[1].cable_type, '4x50 mm²');
+  assert.equal(cables[1].cable_type, '4x50');
   assert.equal(cables[1].od_mm, 32.1);
   assert.equal(cables[1].count, 2);
 });
@@ -516,47 +584,56 @@ test('mapRawDataToCables correctly maps user Excel rows with IEC normalization a
   assert.equal(cables[0].cable_tag, '=W16-52');
   assert.equal(cables[0].source_node, 'P181');
   assert.equal(cables[0].dest_node, 'P181');
-  assert.equal(cables[0].cable_type, '12x1.5 mm²');
+  assert.equal(cables[0].cable_type, '12x1.5');
 
   // Row 168: P181 -> E-7E1
   assert.equal(cables[1].cable_tag, '=W16-168');
   assert.equal(cables[1].source_node, 'P181');
   assert.equal(cables[1].dest_node, 'E-7E1');
-  assert.equal(cables[1].cable_type, '4x1.5 mm²');
+  assert.equal(cables[1].cable_type, '4x1.5');
   assert.equal(cables[1].od_mm, 10.3); // Resolved catalog OD!
 
   // Row 169: P181 -> E-7E1 (grouped to same drop point, NO duplicate node!)
   assert.equal(cables[2].cable_tag, '=W16-169');
   assert.equal(cables[2].source_node, 'P181');
   assert.equal(cables[2].dest_node, 'E-7E1');
-  assert.equal(cables[2].cable_type, '4x1.5 mm²');
+  assert.equal(cables[2].cable_type, '4x1.5');
   assert.equal(cables[2].od_mm, 10.3);
 
   // Row with 0,56mm² comma decimal
   assert.equal(cables[3].cable_tag, '=W16-200');
   assert.equal(cables[3].source_node, 'P101');
   assert.equal(cables[3].dest_node, 'E-46E1');
-  assert.equal(cables[3].cable_type, '4x2x0.56 mm²');
+  assert.equal(cables[3].cable_type, '4x2x0.56');
+});
+
+test('stripCableSpecUnits removes mm², mm2, sqmm, and mm suffixes', () => {
+  assert.equal(stripCableSpecUnits('12x1.5 mm²'), '12x1.5');
+  assert.equal(stripCableSpecUnits('4x50mm2'), '4x50');
+  assert.equal(stripCableSpecUnits('1x240 sqmm'), '1x240');
+  assert.equal(stripCableSpecUnits('4x1.5 mm'), '4x1.5');
+  assert.equal(stripCableSpecUnits('12x1.5'), '12x1.5');
+  assert.equal(stripCableSpecUnits('4x2x0.56 mm²'), '4x2x0.56');
 });
 
 test('normalizeCableSpec handles DIN/EPLAN conductor designations 2Xx, 4Gx, 7Xx, etc.', () => {
   // Conductor designation without earth: 'X' + multiplication letter 'x' -> 'Xx'
-  assert.equal(normalizeCableSpec('2Xx1.5'), '2x1.5 mm²');
-  assert.equal(normalizeCableSpec('2Xx1,5 mm²'), '2x1.5 mm²');
-  assert.equal(normalizeCableSpec('2xx1.5 mm²'), '2x1.5 mm²');
-  assert.equal(normalizeCableSpec('2XX1.5 mm²'), '2x1.5 mm²');
-  assert.equal(normalizeCableSpec('4Xx1,5 mm²'), '4x1.5 mm²');
-  assert.equal(normalizeCableSpec('7Xx1,5 mm²'), '7x1.5 mm²');
-  assert.equal(normalizeCableSpec('2Xx0,5 mm²'), '2x0.5 mm²');
+  assert.equal(normalizeCableSpec('2Xx1.5'), '2x1.5');
+  assert.equal(normalizeCableSpec('2Xx1,5 mm²'), '2x1.5');
+  assert.equal(normalizeCableSpec('2xx1.5 mm²'), '2x1.5');
+  assert.equal(normalizeCableSpec('2XX1.5 mm²'), '2x1.5');
+  assert.equal(normalizeCableSpec('4Xx1,5 mm²'), '4x1.5');
+  assert.equal(normalizeCableSpec('7Xx1,5 mm²'), '7x1.5');
+  assert.equal(normalizeCableSpec('2Xx0,5 mm²'), '2x0.5');
 
   // Conductor designation with earth: 'G' + multiplication letter 'x' -> 'Gx'
-  assert.equal(normalizeCableSpec('4Gx1,5 mm²'), '4x1.5 mm²');
-  assert.equal(normalizeCableSpec('4Gx2,5 mm²'), '4x2.5 mm²');
-  assert.equal(normalizeCableSpec('5Gx1,5 mm²'), '5x1.5 mm²');
-  assert.equal(normalizeCableSpec('7Gx1,5 mm²'), '7x1.5 mm²');
-  assert.equal(normalizeCableSpec('12Gx1,5 mm²'), '12x1.5 mm²');
-  assert.equal(normalizeCableSpec('18Gx1,5 mm²'), '18x1.5 mm²');
-  assert.equal(normalizeCableSpec('18Gx0,75 mm²'), '18x0.75 mm²');
+  assert.equal(normalizeCableSpec('4Gx1,5 mm²'), '4x1.5');
+  assert.equal(normalizeCableSpec('4Gx2,5 mm²'), '4x2.5');
+  assert.equal(normalizeCableSpec('5Gx1,5 mm²'), '5x1.5');
+  assert.equal(normalizeCableSpec('7Gx1,5 mm²'), '7x1.5');
+  assert.equal(normalizeCableSpec('12Gx1,5 mm²'), '12x1.5');
+  assert.equal(normalizeCableSpec('18Gx1,5 mm²'), '18x1.5');
+  assert.equal(normalizeCableSpec('18Gx0,75 mm²'), '18x0.75');
 });
 
 test('lookupCatalogCableOd resolves correct handbook ODs for normalized 2Xx and 4Gx specs', () => {
@@ -590,17 +667,45 @@ test('mapRawDataToCables auto-normalizes 2Xx and 4Gx specs and assigns catalog O
   const cables = mapRawDataToCables(userRows, 0, mapping);
   assert.equal(cables.length, 3);
 
-  // 2Xx1,5 mm² normalized to 2x1.5 mm² with OD 9.0
-  assert.equal(cables[0].cable_type, '2x1.5 mm²');
+  // 2Xx1,5 mm² normalized to 2x1.5 with OD 9.0
+  assert.equal(cables[0].cable_type, '2x1.5');
   assert.equal(cables[0].od_mm, 9.0);
 
-  // 4Gx1,5 mm² normalized to 4x1.5 mm² with OD 10.3
-  assert.equal(cables[1].cable_type, '4x1.5 mm²');
+  // 4Gx1,5 mm² normalized to 4x1.5 with OD 10.3
+  assert.equal(cables[1].cable_type, '4x1.5');
   assert.equal(cables[1].od_mm, 10.3);
 
-  // 4Gx2,5 mm² normalized to 4x2.5 mm² with OD 11.5
-  assert.equal(cables[2].cable_type, '4x2.5 mm²');
+  // 4Gx2,5 mm² normalized to 4x2.5 with OD 11.5
+  assert.equal(cables[2].cable_type, '4x2.5');
   assert.equal(cables[2].od_mm, 11.5);
+});
+
+test('mapRawDataToCables matches custom rule regardless of whether rule or excel had mm²', () => {
+  const userRows = [
+    ['Tag', 'From', 'To', 'Spec'],
+    ['W_01', 'P101', 'E-01', '12x1.5 mm²'],
+    ['W_02', 'P101', 'E-02', '12x1.5'],
+  ];
+
+  const mapping = {
+    cableTagCol: 'Tag',
+    cableSourceCol: 'From',
+    cableDestCol: 'To',
+    cableTypeCol: 'Spec',
+  };
+
+  // Rule saved cleanly as '12x1.5': 18.2
+  const defaultOdMap = {
+    custom: {
+      '12x1.5': 18.2,
+    },
+  };
+
+  const cables = mapRawDataToCables(userRows, 0, mapping, {}, defaultOdMap);
+  assert.equal(cables[0].cable_type, '12x1.5');
+  assert.equal(cables[0].od_mm, 18.2);
+  assert.equal(cables[1].cable_type, '12x1.5');
+  assert.equal(cables[1].od_mm, 18.2);
 });
 
 test('mapRawDataToCables extracts source_panel and dest_panel from raw IEC tags and panel columns', () => {

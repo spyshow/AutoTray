@@ -148,11 +148,13 @@ def get_effective_cable_od(cable: Cable, parameters: CalculationParameters) -> f
 
     c_type_raw = str(cable.cable_type or "").strip()
     c_type_lower = c_type_raw.lower()
+    c_type_clean = re.sub(r"\s*(?:mm²|mm2|sqmm|\bmm\b)\s*$", "", c_type_lower, flags=re.IGNORECASE).strip()
 
     if parameters.custom_od_by_type:
         for k, v in parameters.custom_od_by_type.items():
-            k_clean = k.strip().lower()
-            if (k_clean == c_type_lower or k_clean in c_type_lower or c_type_lower in k_clean) and v > 0:
+            k_lower = k.strip().lower()
+            k_clean = re.sub(r"\s*(?:mm²|mm2|sqmm|\bmm\b)\s*$", "", k_lower, flags=re.IGNORECASE).strip()
+            if (k_clean == c_type_clean or k_lower == c_type_lower or k_clean in c_type_clean or c_type_clean in k_clean) and v > 0:
                 return float(v)
 
     # Technical handbook catalog lookup (e.g. 4x50 -> 32.1, 4x240 -> 70.2, 3x16 -> 18.4)
@@ -254,10 +256,16 @@ def levenshtein_distance(s1: str, s2: str) -> int:
     return prev[-1]
 
 
+def strip_leading_zeros_in_numbers(s: str) -> str:
+    """Strips leading zeros in number sequences (e.g. N024 -> N24, 005 -> 5)."""
+    return re.sub(r"(?<=\D)0+(?=\d)|^0+(?=\d)", "", s)
+
+
 def find_node_suggestion(target: str, existing_nodes: Set[str], exclude: Optional[str] = None) -> Optional[str]:
     """Finds the most likely intended node name if there is a typo or transposition."""
     target_clean = target.strip().upper()
     exclude_clean = exclude.strip().upper() if exclude else None
+    target_normalized = strip_leading_zeros_in_numbers(target_clean)
     best_candidate = None
     min_dist = 999
     # Sort nodes for deterministic selection
@@ -267,6 +275,11 @@ def find_node_suggestion(target: str, existing_nodes: Set[str], exclude: Optiona
             continue
         if n_clean == target_clean:
             return n
+
+        # Do NOT treat intentional zero-padded nodes (e.g. N024 vs N24) as typos of each other
+        if target_normalized == strip_leading_zeros_in_numbers(n_clean):
+            continue
+
         d = levenshtein_distance(target_clean, n_clean)
         if d <= 2 and d < min_dist:
             min_dist = d
@@ -275,6 +288,10 @@ def find_node_suggestion(target: str, existing_nodes: Set[str], exclude: Optiona
     if not best_candidate and exclude_clean:
         for n in sorted(existing_nodes):
             n_clean = n.strip().upper()
+            if n_clean == target_clean:
+                return n
+            if target_normalized == strip_leading_zeros_in_numbers(n_clean):
+                continue
             d = levenshtein_distance(target_clean, n_clean)
             if d <= 2 and d < min_dist:
                 min_dist = d
@@ -646,21 +663,37 @@ def solve_routing_and_sizing(
                 cat_lower = str(c.category).strip().lower()
                 if cat_lower in ["power", "control", "signal", "data", "bus"]:
                     return cat_lower
-            s = c.cable_type.strip().lower()
-            if any(k in s for k in ["pwr", "power", "feeder", "motor", "mv", "lv", "400v", "1kv", "volt"]):
-                return "power"
+            s = c.cable_type.strip().lower().replace(",", ".")
             if any(k in s for k in ["data", "bus", "eth", "net", "cat", "fiber", "prof", "modbus", "fieldbus"]):
                 return "data"
-            if any(k in s for k in ["ctrl", "control", "24v", "sig", "signal", "sensor", "inst"]):
-                return "control"
+            if any(k in s for k in ["pwr", "power", "feeder", "motor", "mv", "lv", "400v", "1kv", "volt", "high voltage"]):
+                return "power"
             import re
-            m = re.search(r"(?:(\d+)\s*(?:c|core|cores)?\s*(?:[xX\*\/])\s*(\d+(?:\.\d+)?))", s, re.IGNORECASE)
-            if m:
+            m_pair = re.search(r"(\d+)\s*[xX*×]\s*(\d+)\s*(?:[xX*×Gg]+|\s+)\s*([\d\.]+)", s)
+            if m_pair:
                 try:
-                    cores = int(m.group(1))
-                    size = float(m.group(2))
-                    if cores in (3, 4, 5) and size >= 6.0:
+                    pair_size = float(m_pair.group(3))
+                    if pair_size > 1.5:
                         return "power"
+                    return "data"
+                except (ValueError, TypeError):
+                    pass
+            m_core = re.search(r"(?:^|[^\d])(\d+)\s*(?:c|core|cores)?\s*(?:[gG]\s*[xX*×]?|[xX*×]{1,2}|[\*×\/])\s*(\d+(?:\.\d+)?)", s, re.IGNORECASE)
+            if m_core:
+                try:
+                    size = float(m_core.group(2))
+                    if size > 1.5:
+                        return "power"
+                    return "control"
+                except (ValueError, TypeError):
+                    pass
+            m_area = re.search(r"(?:^|[^\d])(\d+(?:\.\d+)?)\s*(?:mm2|sqmm|mm²|\bmm\b)", s, re.IGNORECASE)
+            if m_area:
+                try:
+                    size = float(m_area.group(1))
+                    if size > 1.5:
+                        return "power"
+                    return "control"
                 except (ValueError, TypeError):
                     pass
             return "control"

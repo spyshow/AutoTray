@@ -171,12 +171,28 @@ export function autoDetectBranchesMapping(headers: string[]) {
 }
 
 /**
+ * Strips unit suffixes like "mm²", "mm2", "sqmm", "mm" from a cable spec string.
+ * e.g. "12x1.5 mm²" -> "12x1.5"
+ *      "4x50mm2" -> "4x50"
+ *      "1x240 sqmm" -> "1x240"
+ *      "4x2x0.56 mm²" -> "4x2x0.56"
+ */
+export function stripCableSpecUnits(rawSpec: string): string {
+  if (!rawSpec) return '';
+  return String(rawSpec)
+    .trim()
+    .replace(/\s*(?:mm²|mm2|sqmm|\bmm\b)\s*$/i, '')
+    .trim();
+}
+
+/**
  * Normalizes industrial and European cable designations:
- * - Decimal commas: "1,5 mm²" -> "1.5 mm²", "0,56" -> "0.56"
- * - Multi-pair instrumentation: "4x2x0.56 mm²", "4x2 0.56" -> "4x2x0.56 mm²"
+ * - Decimal commas: "1,5 mm²" -> "1.5", "0,56" -> "0.56"
+ * - Multi-pair instrumentation: "4x2x0.56 mm²", "4x2 0.56" -> "4x2x0.56"
  * - Conductor types with earth 'G' and without earth 'X':
  *   "2Xx1.5", "2xx1.5", "2XX1.5", "4Gx1.5", "4Xx1.5", "5Gx1.5", "7Gx1.5", "7Xx1.5", "12Gx1.5", "2Xx0.5"
- *   -> "2x1.5 mm²", "4x1.5 mm²", "5x1.5 mm²", "7x1.5 mm²", "12x1.5 mm²", "2x0.5 mm²"
+ *   -> "2x1.5", "4x1.5", "5x1.5", "7x1.5", "12x1.5", "2x0.5"
+ * Strips unit suffixes (mm², mm2, sqmm, mm) so rule lookups match cleanly.
  */
 export function normalizeCableSpec(rawSpec: string): string {
   if (!rawSpec) return '';
@@ -188,34 +204,28 @@ export function normalizeCableSpec(rawSpec: string): string {
   const pairRegex = /(\d+)\s*[xX*×]\s*(\d+)\s*(?:[xX*×Gg]+|\s+)\s*([\d\.]+)/;
   const mPair = s.match(pairRegex);
   if (mPair) {
-    return `${mPair[1]}x${mPair[2]}x${mPair[3]} mm²`;
+    return `${mPair[1]}x${mPair[2]}x${mPair[3]}`;
   }
 
   // 3. Multi-core cables: handles 2Xx1.5, 2xx1.5, 2XX1.5, 4Gx1.5, 4Xx1.5, 7Gx1.5, 12Gx1.5, 4x1.5, 4G1.5, 1x240, etc.
   const coreSizeRegex = /(?:^|[^\d])(\d+)\s*(?:c|core|cores)?\s*(?:[gG]\s*[xX*×]?|[xX*×]{1,2}|[\*×\/])\s*([\d\.]+)/i;
   const m = s.match(coreSizeRegex);
   if (m) {
-    return `${m[1]}x${m[2]} mm²`;
+    return `${m[1]}x${m[2]}`;
   }
 
-  return s;
+  // 4. Strip any trailing units
+  return stripCableSpecUnits(s);
 }
 
 export function guessCableCategory(rawType: string): CableCategory {
-  const s = String(rawType || '').trim().toLowerCase();
-  if (
-    s.includes('pwr') ||
-    s.includes('power') ||
-    s.includes('volt') ||
-    s.includes('feeder') ||
-    s.includes('motor') ||
-    s.includes('400v') ||
-    s.includes('mv') ||
-    s.includes('lv') ||
-    s.includes('high voltage')
-  ) {
-    return 'power';
-  }
+  let s = String(rawType || '').trim().toLowerCase();
+  if (!s) return 'control';
+
+  // Normalize European decimal commas between digits (e.g. "1,5mm²" -> "1.5mm²", "0,56" -> "0.56")
+  s = s.replace(/(\d+),(\d+)/g, '$1.$2');
+
+  // 1. Explicit Data / Bus / Communication keywords
   if (
     s.includes('data') ||
     s.includes('bus') ||
@@ -229,6 +239,57 @@ export function guessCableCategory(rawType: string): CableCategory {
   ) {
     return 'data';
   }
+
+  // 2. Explicit Power keywords
+  if (
+    s.includes('pwr') ||
+    s.includes('power') ||
+    s.includes('volt') ||
+    s.includes('feeder') ||
+    s.includes('motor') ||
+    s.includes('400v') ||
+    s.includes('mv') ||
+    s.includes('lv') ||
+    s.includes('high voltage') ||
+    s.includes('1kv')
+  ) {
+    return 'power';
+  }
+
+  // 3. Multi-pair instrumentation / data cable check (e.g. "4x2 0,56mm²", "4x2x0.56")
+  const pairRegex = /(\d+)\s*[xX*×]\s*(\d+)\s*(?:[xX*×Gg]+|\s+)\s*([\d\.]+)/;
+  const mPair = s.match(pairRegex);
+  if (mPair) {
+    const pairSize = parseFloat(mPair[3]);
+    if (!isNaN(pairSize) && pairSize > 1.5) {
+      return 'power';
+    }
+    return 'data';
+  }
+
+  // 4. Multi-conductor pattern: 1X 95mm², 1G 50mm², 5G 10mm², 4x2.5, 4x50, 3G 1.5, 12x1.5
+  // Any cable with conductor cross section > 1.5 mm² defaults to power
+  const coreSizeRegex = /(?:^|[^\d])(\d+)\s*(?:c|core|cores)?\s*(?:[gG]\s*[xX*×]?|[xX*×]{1,2}|[\*×\/])\s*(\d+(?:\.\d+)?)/i;
+  const mCore = s.match(coreSizeRegex);
+  if (mCore) {
+    const size = parseFloat(mCore[2]);
+    if (!isNaN(size) && size > 1.5) {
+      return 'power';
+    }
+    return 'control';
+  }
+
+  // 5. Single core cross-sectional area only: "95mm²", "185 mm2", "240 sqmm", "25 mm"
+  const singleAreaRegex = /(?:^|[^\d])(\d+(?:\.\d+)?)\s*(?:mm2|sqmm|mm²|\bmm\b)/i;
+  const mArea = s.match(singleAreaRegex);
+  if (mArea) {
+    const size = parseFloat(mArea[1]);
+    if (!isNaN(size) && size > 1.5) {
+      return 'power';
+    }
+    return 'control';
+  }
+
   return 'control';
 }
 
@@ -323,19 +384,19 @@ export function mapRawDataToCables(
     let rawType = typeIdx !== -1 && row[typeIdx] !== undefined ? String(row[typeIdx]).trim() : '';
     let usedCountAsCores = false;
 
-    // A) If separate cores and size columns are mapped, combine them into standard spec (e.g. 4x1.5 mm²)
+    // A) If separate cores and size columns are mapped, combine them into standard spec (e.g. 4x1.5)
     if (coresIdx !== -1 && sizeIdx !== -1) {
       const cVal = row[coresIdx] !== undefined ? String(row[coresIdx]).trim() : '';
       const sVal = row[sizeIdx] !== undefined ? String(row[sizeIdx]).trim().replace(/,/g, '.').replace(/mm²|sqmm|mm2/gi, '').trim() : '';
       if (cVal && sVal) {
-        rawType = `${cVal}x${sVal} mm²`;
+        rawType = `${cVal}x${sVal}`;
       }
     } else if (coresIdx !== -1 && sizeIdx === -1 && rawType) {
       // Cores mapped and rawType contains a size number (e.g. "1.5" or "1.5 mm²")
       const cVal = row[coresIdx] !== undefined ? String(row[coresIdx]).trim() : '';
       const sizeMatch = rawType.match(/^(\d+(?:\.\d+)?)\s*(?:mm²|sqmm|mm2)?$/i);
       if (cVal && sizeMatch) {
-        rawType = `${cVal}x${sizeMatch[1]} mm²`;
+        rawType = `${cVal}x${sizeMatch[1]}`;
       }
     } else if (coresIdx === -1 && sizeIdx !== -1 && countIdx !== -1) {
       // Cores column was not explicitly mapped, but countIdx has small integer (e.g. 1..12) and sizeIdx has cross section
@@ -344,7 +405,7 @@ export function mapRawDataToCables(
       const cNum = parseInt(cVal, 10);
       const sNum = parseFloat(sVal);
       if (!isNaN(cNum) && cNum >= 1 && cNum <= 12 && !isNaN(sNum) && sNum > 0) {
-        rawType = `${cNum}x${sVal} mm²`;
+        rawType = `${cNum}x${sVal}`;
         usedCountAsCores = true;
       }
     }
@@ -371,9 +432,11 @@ export function mapRawDataToCables(
 
     if (od_mm === undefined && defaultOdMap?.custom) {
       const lowerRaw = rawType.toLowerCase();
+      const rawClean = stripCableSpecUnits(lowerRaw);
       for (const [k, v] of Object.entries(defaultOdMap.custom)) {
         const kLower = k.toLowerCase().trim();
-        if ((kLower === lowerRaw || kLower.includes(lowerRaw) || lowerRaw.includes(kLower)) && v > 0) {
+        const kClean = stripCableSpecUnits(kLower);
+        if ((kClean === rawClean || kLower === lowerRaw || kLower.includes(lowerRaw) || lowerRaw.includes(kLower)) && v > 0) {
           od_mm = v;
           break;
         }

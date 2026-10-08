@@ -252,7 +252,7 @@ export function BranchesTable({
       if (t) set.add(t);
     });
     return Array.from(set).sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }) || a.localeCompare(b)
     );
   }, [cables, branches]);
 
