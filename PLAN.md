@@ -1,32 +1,37 @@
-# PLAN: Compact Cable Schedule Width to Fit Screen
+# PLAN: Fix Table Headers Disappearing on Scroll
 
 ## 1. Problem Diagnosis
-- In `cables-table.tsx`, the 11 columns are inflated with oversized minimum widths (`min-w-[170px]`, `min-w-[175px]`, `min-w-[160px]`), wide inputs (`NodeComboboxCell` set to `w-36`), wide header subtitles, and `px-3` (24px/column) default cell padding.
-- This balloons the total table width past 1,400px, causing columns 8–11 (Parallel Runs, Route Status, Actions) to be pushed far off the right side of the screen and requiring tedious horizontal scrolling.
+- When users scroll down long tables (Cables, Branches, Results, Nodes, Catalog), the table column headers disappear out of view because `TableHead` was non-sticky.
+- Previously, an attempt to make `TableHead` sticky used `top: ${headerOffset + toolbarHeight}px` inside a container with `overflow-auto`. In CSS, any element with `overflow` creates an isolated scroll container where `top: 113px` immediately displaces the header down 113px over the first 2-3 data rows even when the page is at scroll position 0.
+- Conversely, on desktop viewports (where the tables are compacted to ~904px and easily fit within standard desktop widths), setting `overflow-visible` allows the sticky viewport to be the browser window. The header then stays in natural document flow at scroll 0, and cleanly pins at `top: ${headerOffset + toolbarHeight}px` right underneath the sticky toolbar when scrolling down.
+- On mobile/small screens (< 1024px), horizontal swiping is preserved via `overflow-x-auto`, while keeping headers in natural static flow so they never overlay data rows.
 
 ---
 
 ## 2. Implementation Steps
 
-### Step 1: Tighten Cable Schedule Column Widths & Components [COMPLETED]
+### Step 1: Add Dynamic Measurement & Desktop Sticky State to Tables [COMPLETED]
+- In `frontend/src/components/ui/table.tsx`:
+  - Updated `Table` container to use `containerClassName || "overflow-auto"`, enabling callers to set `overflow-visible` on desktop.
 - In `frontend/src/components/cables-table.tsx`:
-  - **Select Checkbox**: `w-9 text-center px-1` (~36px).
-  - **Cable Tag**: Compacted to `min-w-[125px] max-w-[140px]` with `w-24` tag input.
-  - **Source Node**: Compacted to `min-w-[115px] max-w-[130px]` with `widthClass="w-28"` and header `Source (From)`.
-  - **Destination Node**: Compacted to `min-w-[115px] max-w-[130px]` with `widthClass="w-28"` and header `Destination (To)`.
-  - **Cable Spec / Type**: Compacted to `min-w-[105px] max-w-[120px]` with header `Spec / Type` and `w-20` input.
-  - **Category**: Compacted to `min-w-[75px] max-w-[85px]` with compact `text-[11px]` select styling.
-  - **Formation**: Compacted to `min-w-[85px] max-w-[95px]` with concise header `Formation`.
-  - **OD (mm)**: Compacted to `min-w-[60px] max-w-[70px]` with `w-14` numeric input and header `OD (mm)`.
-  - **Parallel Runs**: Compacted to `min-w-[55px] max-w-[65px]` with concise header `Runs / Qty` and `w-12` numeric input.
-  - **Route Status**: Compacted to `min-w-[100px] max-w-[115px]` with concise header `Route`.
-  - **Actions**: `w-8 flex justify-center` (~32px).
+  - Measured `toolbarRef` height dynamically via `ResizeObserver` (`toolbarHeight`).
+  - Tracked `isDesktop` via `window.matchMedia('(min-width: 1024px)')`.
+  - Updated `Table containerClassName={isDesktop ? "overflow-visible min-w-full" : "overflow-x-auto min-w-full"}`.
+  - Applied responsive sticky to `TableHead`:
+    - `style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}`
+    - `className={cn("bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-2 px-2 whitespace-nowrap", isDesktop && "sticky z-10 shadow-xs")}`
 
-### Step 2: Reduce Horizontal Cell Padding [COMPLETED]
-- In `cables-table.tsx`, updated `TableHead` to `py-2 px-2` and `TableCell` to `py-1.5 px-2`, eliminating unnecessary empty padding across all 11 columns.
+### Step 2: Apply Responsive Sticky to Branches, Results, Nodes, and Catalog Tables [COMPLETED]
+- In `frontend/src/components/branches-table.tsx`:
+  - Attached `toolbarRef`, dynamic `toolbarHeight`, `isDesktop`, and applied responsive sticky to `TableHead`.
+- In `frontend/src/components/results-table.tsx`:
+  - Attached `toolbarRef`, dynamic `toolbarHeight`, `isDesktop`, and applied responsive sticky to `TableHead`.
+- In `frontend/src/components/nodes-fittings-tab.tsx`:
+  - Attached `toolbarRef`, dynamic `toolbarHeight`, `isDesktop`, and applied responsive sticky to `th` headers.
+- In `frontend/src/components/defaults-settings-tab.tsx`:
+  - Attached `toolbarRef`, dynamic `toolbarHeight`, `isDesktop`, and applied responsive sticky to catalog `th` headers.
 
-### Step 3: Verify and Test [COMPLETED]
-- Total table width trimmed from ~1,400px+ down to ~904px, fitting all 11 columns on screen without side-scrolling.
-- Ran `npm test` in `frontend` (107/107 tests passing).
-- Ran `pytest` in `backend` (46/46 tests passing).
-- Ran `npm run build` in `frontend` (0 errors, Turbopack production build succeeded).
+### Step 3: Run Full Test Suites & Production Build [COMPLETED]
+- Ran `npm test` in `frontend` (107/107 tests passed).
+- Ran `.venv\Scripts\python -m pytest` in `backend` (46/46 tests passed).
+- Ran `npm run build` in `frontend` (Compiled successfully, 0 errors).

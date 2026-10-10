@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -16,6 +16,7 @@ import {
 } from '@tanstack/react-table';
 import { BranchSizingResult } from '@/lib/types';
 import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
+import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,8 +65,20 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }, [globalFilter, levelFilter, statusFilter]);
 
-  // Measure sticky header offset dynamically
+  // Measure sticky header and toolbar offsets dynamically
   const [headerOffset, setHeaderOffset] = useState(57);
+  const [toolbarHeight, setToolbarHeight] = useState(56);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const headerEl = document.getElementById('app-header');
@@ -77,6 +90,21 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(updateOffset);
       ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const updateToolbar = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(toolbarRef.current);
       return () => ro.disconnect();
     }
   }, []);
@@ -184,6 +212,25 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
             </Badge>
           );
         },
+      },
+      {
+        accessorKey: 'length_m',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-0 hover:bg-transparent font-bold text-center"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Length
+            <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="text-center font-mono font-medium text-slate-800 text-xs">
+            {row.original.length_m} m
+          </div>
+        ),
       },
       {
         accessorKey: 'cable_count',
@@ -355,6 +402,7 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Controls Bar - Sticky right under App Header */}
       <div
+        ref={toolbarRef}
         style={{ top: `${headerOffset}px` }}
         className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 transition-[top] duration-75"
       >
@@ -410,14 +458,18 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
       </div>
 
       {/* Sizing Table */}
-      <Table containerClassName="overflow-x-auto min-w-full">
+      <Table containerClassName={isDesktop ? "overflow-visible min-w-full" : "overflow-x-auto min-w-full"}>
         <TableHeader>
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
               {headerGroup.headers.map(header => (
                 <TableHead
                   key={header.id}
-                  className="bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 whitespace-nowrap"
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn(
+                    "bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 whitespace-nowrap",
+                    isDesktop && "sticky z-10 shadow-xs"
+                  )}
                 >
                   {header.isPlaceholder
                     ? null
@@ -485,9 +537,11 @@ export function ResultsTable({ data, onExportExcel, isExporting }: ResultsTableP
                               <Layers className="h-3.5 w-3.5 text-blue-600" />
                               Cables Routed on Tray [{row.original.branch_id}] ({row.original.cable_count} items)
                             </span>
-                            <span className="text-[11px] text-slate-500">
-                              Tray Side Height: {row.original.tray_height_mm} mm
-                            </span>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                              <span>Length: <strong className="font-mono text-slate-700">{row.original.length_m} m</strong></span>
+                              <span>&bull;</span>
+                              <span>Tray Side Height: <strong className="font-mono text-slate-700">{row.original.tray_height_mm} mm</strong></span>
+                            </div>
                           </div>
 
                           <div className="overflow-x-auto max-h-56 text-xs">

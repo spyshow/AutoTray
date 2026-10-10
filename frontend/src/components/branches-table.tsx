@@ -13,7 +13,7 @@ import {
   PaginationState,
 } from '@tanstack/react-table';
 import { Branch, Cable, SupportMountingType } from '@/lib/types';
-import { incrementIdentifier } from '@/lib/utils';
+import { incrementIdentifier, cn } from '@/lib/utils';
 import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -182,8 +182,20 @@ export function BranchesTable({
   const defaultMountingTypeRef = useRef(defaultMountingType);
   defaultMountingTypeRef.current = defaultMountingType;
 
-  // Measure sticky header offset dynamically
+  // Measure sticky header and toolbar offsets dynamically
   const [headerOffset, setHeaderOffset] = useState(57);
+  const [toolbarHeight, setToolbarHeight] = useState(56);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const headerEl = document.getElementById('app-header');
@@ -195,6 +207,21 @@ export function BranchesTable({
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(updateOffset);
       ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const updateToolbar = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(toolbarRef.current);
       return () => ro.disconnect();
     }
   }, []);
@@ -636,6 +663,7 @@ export function BranchesTable({
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Top Action Toolbar - Sticky right under App Header */}
       <div
+        ref={toolbarRef}
         style={{ top: `${headerOffset}px` }}
         className="sticky z-20 bg-white/95 backdrop-blur-sm rounded-t-xl border-b border-slate-200 p-3 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-[top] duration-75"
       >
@@ -754,14 +782,18 @@ export function BranchesTable({
       </div>
 
       {/* TanStack Branches Table */}
-      <Table containerClassName="overflow-x-auto min-w-full">
+      <Table containerClassName={isDesktop ? "overflow-visible min-w-full" : "overflow-x-auto min-w-full"}>
         <TableHeader>
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
               {headerGroup.headers.map(header => (
                 <TableHead
                   key={header.id}
-                  className="bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 whitespace-nowrap"
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn(
+                    "bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700 py-3 whitespace-nowrap",
+                    isDesktop && "sticky z-10 shadow-xs"
+                  )}
                 >
                   {header.isPlaceholder
                     ? null

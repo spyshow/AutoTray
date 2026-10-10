@@ -10,6 +10,7 @@ import {
 } from '@/lib/cable-catalog';
 import { stripCableSpecUnits } from '@/lib/excel';
 import { getStoredPageSize, setStoredPageSize } from '@/lib/page-size-storage';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
@@ -81,8 +82,20 @@ export function DefaultsSettingsTab({
   const [testInput, setTestInput] = useState('4x50');
   const [addedRuleToast, setAddedRuleToast] = useState<string | null>(null);
 
-  // Measure sticky header offset dynamically
+  // Measure sticky header and toolbar offsets dynamically
   const [headerOffset, setHeaderOffset] = useState(57);
+  const [toolbarHeight, setToolbarHeight] = useState(56);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const headerEl = document.getElementById('app-header');
@@ -94,6 +107,21 @@ export function DefaultsSettingsTab({
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(updateOffset);
       ro.observe(headerEl);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const updateToolbar = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.offsetHeight);
+      }
+    };
+    updateToolbar();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateToolbar);
+      ro.observe(toolbarRef.current);
       return () => ro.disconnect();
     }
   }, []);
@@ -1252,6 +1280,7 @@ export function DefaultsSettingsTab({
 
         {/* Sticky Filter Pills & Search Bar Toolbar */}
         <div
+          ref={toolbarRef}
           style={{ top: `${headerOffset}px` }}
           className="sticky z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 p-3 sm:px-5 shadow-xs space-y-3 transition-[top] duration-75"
         >
@@ -1347,11 +1376,14 @@ export function DefaultsSettingsTab({
         </div>
 
         {/* Table of Catalog Cables */}
-        <div className="overflow-x-auto min-w-full">
+        <div className={isDesktop ? "overflow-visible min-w-full" : "overflow-x-auto min-w-full"}>
           <table className="w-full text-xs text-left border-collapse">
             <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-semibold whitespace-nowrap">
               <tr>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5 w-10 text-center">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5 w-10 text-center", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   <input
                     ref={masterCheckboxRef}
                     type="checkbox"
@@ -1361,31 +1393,58 @@ export function DefaultsSettingsTab({
                     title="Select / deselect all filtered cables"
                   />
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Designation
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Catalog Code
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Voltage &amp; Standard
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Conductor &amp; Sheath
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-center">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5 text-center", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Cores &times; Size
                 </th>
-                <th className="bg-blue-50/90 border-b border-slate-200 p-2.5 text-center font-bold text-blue-900">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-blue-50/90 border-b border-slate-200 p-2.5 text-center font-bold text-blue-900", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   OD (mm)
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-right">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5 text-right", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Weight (kg/km)
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-right">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5 text-right", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Current in Air (A)
                 </th>
-                <th className="bg-slate-100 border-b border-slate-200 p-2.5 text-right">
+                <th
+                  style={isDesktop ? { top: `${headerOffset + toolbarHeight}px` } : undefined}
+                  className={cn("bg-slate-100 border-b border-slate-200 p-2.5 text-right", isDesktop && "sticky z-10 shadow-xs")}
+                >
                   Actions
                 </th>
               </tr>
